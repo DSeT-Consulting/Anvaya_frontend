@@ -1,0 +1,14 @@
+eas build:configure
+
+//apk
+eas build -p android --profile preview
+
+//dev
+eas build --profile development --platform android
+
+//production
+eas build --profile production --platform android 
+
+
+
+
