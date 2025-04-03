@@ -27,7 +27,6 @@ export default function LoginScreen() {
   const [windowDimensions, setWindowDimensions] = useState(Dimensions.get("window"))
   const { signIn, isLoading, setIsLoading } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
-
   useEffect(() => {
     const subscription = Dimensions.addEventListener("change", ({ window }) => {
       setWindowDimensions(window)
@@ -56,6 +55,7 @@ export default function LoginScreen() {
     } finally {
       setIsLoading(false)
     }
+    console.log("Login")
   }
 
   const handleSignUpDoctor = () => {
@@ -125,6 +125,10 @@ export default function LoginScreen() {
                 </TouchableOpacity>
               </View>
 
+              {/* <TouchableOpacity style={styles.forgotPassword}>
+                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+              </TouchableOpacity> */}
+
               <TouchableOpacity
                 style={[styles.loginButton, isWeb && styles.webButton, isLoading && styles.disabledButton]}
                 onPress={handleLogin}
@@ -153,7 +157,7 @@ export default function LoginScreen() {
                 style={[styles.signupButton, styles.patientButton, isWeb && styles.webButton]}
                 onPress={handleSignUpPatient}
               >
-                <MaterialIcons name="person-add" size={18} color="#fff" style={styles.buttonIcon} />
+                <MaterialIcons name="person" size={18} color="#fff" style={styles.buttonIcon} />
                 <Text style={styles.signupButtonText}>Sign Up as Patient</Text>
               </TouchableOpacity>
             </View>
@@ -164,32 +168,202 @@ export default function LoginScreen() {
   )
 }
 
+const webStyles = {
+  webInputStyle: {
+    outlineWidth: 0,
+    outlineColor: "transparent",
+    outlineStyle: "none",
+  },
+}
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
-  header: { flexDirection: "row", alignItems: "center", padding: 16, backgroundColor: "#2196F3" },
-  headerLogoContainer: { flex: 1 },
-  headerLogo: { width: 40, height: 40 },
-  headerTitle: { fontSize: 20, fontWeight: "bold", color: "#fff" },
-  infoIconContainer: { padding: 8 },
-  logoContainerHeader: { alignItems: "center", marginTop: 20 },
-  logo: { width: 150, height: 100 },
-  content: { flex: 1 },
-  scrollContent: { flexGrow: 1, alignItems: "center", justifyContent: "center" },
-  loginCard: { backgroundColor: "#fff", padding: 20, borderRadius: 10, alignItems: "center" },
-  logoContainer: { alignItems: "center", marginBottom: 20 },
-  logoCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: "#E3F2FD", alignItems: "center", justifyContent: "center" },
-  welcomeText: { fontSize: 22, fontWeight: "bold" },
-  subtitleText: { fontSize: 16, color: "#757575" },
-  inputContainer: { width: "100%" },
-  inputWrapper: { flexDirection: "row", alignItems: "center", borderBottomWidth: 1, marginBottom: 16 },
-  inputIcon: { marginRight: 10 },
-  input: { flex: 1, paddingVertical: 8 },
-  loginButton: { backgroundColor: "#2196F3", padding: 10, borderRadius: 5, alignItems: "center" },
-  loginButtonText: { color: "#fff", fontWeight: "bold" },
-  signupContainer: { marginTop: 10 },
-  signupButton: { padding: 10, borderRadius: 5, alignItems: "center", flexDirection: "row", marginTop: 10 },
-  signupButtonText: { marginLeft: 5, color: "#fff", fontWeight: "bold" },
-  doctorButton: { backgroundColor: "#4CAF50" },
-  patientButton: { backgroundColor: "#FF9800" },
+  logoContainerHeader: {
+    position: "absolute",
+    top: 80,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    alignItems: "center",
+    paddingTop: 10,
+  },
+  logo: {
+    width: 250,
+    height: 50,
+    opacity: 0.3, // Makes the logo transparent
+  },
+  container: {
+    flex: 1,
+    backgroundColor: "#f5f5f5",
+  },
+  header: {
+    backgroundColor: "#2196F3",
+    padding: 16,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  headerTitle: {
+    color: "#fff",
+    fontSize: 20,
+    fontWeight: "bold",
+    flex: 1,
+    textAlign: "center",
+  },
+  infoIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  content: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  loginCard: {
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    padding: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    alignSelf: "center",
+  },
+  logoContainer: {
+    alignItems: "center",
+    marginBottom: 30,
+  },
+  logoCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#f0f9ff",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  welcomeText: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 8,
+  },
+  subtitleText: {
+    fontSize: 14,
+    color: "#666",
+  },
+  inputContainer: {
+    width: "100%",
+  },
+  inputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f5f5f5",
+    borderRadius: 8,
+    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  webInputWrapper: {
+    paddingVertical: 8,
+    minHeight: 50,
+  },
+  inputIcon: {
+    marginRight: 12,
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    color: "#333",
+  },
+  webInput: {
+    height: 30,
+    width: "100%",
+    fontSize: 16,
+  },
+  forgotPassword: {
+    alignSelf: "flex-end",
+    marginBottom: 20,
+  },
+  forgotPasswordText: {
+    color: "#2196F3",
+    fontSize: 14,
+  },
+  loginButton: {
+    backgroundColor: "#2196F3",
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  webButton: {
+    paddingVertical: 16,
+    cursor: "pointer",
+  },
+  loginButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  signupContainer: {
+    alignItems: "center",
+    marginBottom: 15,
+  },
+  signupText: {
+    fontSize: 14,
+    color: "#666",
+  },
+  signupButton: {
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: "center",
+    marginBottom: 10,
+    flexDirection: "row",
+    justifyContent: "center",
+  },
+  adminButton: {
+    backgroundColor: "#4CAF50", // Green color for admin
+  },
+  doctorButton: {
+    backgroundColor: "#FF5722", // Orange color for doctor
+  },
+  patientButton: {
+    backgroundColor: "#FF9800", // Amber color for patient
+  },
+  disabledButton: {
+    backgroundColor: "#BDBDBD",
+    opacity: 0.7,
+  },
+  signupButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  buttonIcon: {
+    marginRight: 8,
+  },
+  visibilityIcon: {
+    padding: 4,
+  },
+  headerLogoContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#fff",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 10,
+    overflow: "hidden",
+  },
+  headerLogo: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+  },
 })
-
