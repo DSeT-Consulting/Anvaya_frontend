@@ -89,7 +89,7 @@ export default function Dashboard() {
         {/* Centered Brand (logo + name) */}
         <View style={styles.brandContainer}>
           <Image
-            source={require("../assets/images/dsetlogo.webp")} // Adjust path as needed
+            source={require("../../assets/images/dsetlogo.webp")} // Adjust path as needed
             style={styles.appIcon}
             resizeMode="contain"
           />
