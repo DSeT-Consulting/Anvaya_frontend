@@ -10,34 +10,52 @@ import {
   ScrollView,
   Dimensions,
   Platform,
+  Image,
 } from "react-native"
 import { MaterialIcons } from "@expo/vector-icons"
 import { useRouter } from "expo-router"
 
-// Example: you might fetch actual doctor’s name from user profile or context
-const doctorName = "John"
+// -- Import your existing API calls (including verifyToken & logout)
+import { verifyToken, logout } from "@/api"  // Adjust the path as needed
 
 export default function Dashboard() {
   const router = useRouter()
   const [dimensions, setDimensions] = useState(Dimensions.get("window"))
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [doctorName, setDoctorName] = useState<string>("") // store the fetched name
   const isWeb = Platform.OS === "web"
 
   useEffect(() => {
+    // Listen for screen dimension changes
     const subscription = Dimensions.addEventListener("change", ({ window }) => {
       setDimensions(window)
     })
     return () => subscription?.remove()
   }, [])
 
-  // Calculate number of columns based on screen width
+  // 1) Fetch the logged-in doctor name
+  useEffect(() => {
+    const fetchDoctorName = async () => {
+      const tokenRes = await verifyToken() 
+      // tokenRes.data might look like: { valid: boolean, user?: { name: string, email: string, role: 'doctor' } }
+      if (tokenRes.success && tokenRes.data?.user) {
+        setDoctorName(tokenRes.data.user.name || "")
+      } else {
+        // If token is invalid or no user, optionally push to login
+        // router.push("/login")
+      }
+    }
+    fetchDoctorName()
+  }, [])
+
+  // Calculate columns for responsive grid
   const getColumns = () => {
     if (dimensions.width > 1024) return 3
     if (dimensions.width > 600) return 2
     return 1
   }
 
-  // Cards in the main grid (Settings removed and placed in dropdown)
+  // Main grid menu items
   const menuItems = [
     {
       title: "Register New Patient",
@@ -53,33 +71,62 @@ export default function Dashboard() {
     },
   ]
 
-  const handleSignOut = () => {
-    // Sign-out logic here (e.g., clear tokens, call logout endpoint, etc.)
-    // Then navigate to login screen
-    router.push("/login")
-  }
-
+  // Toggle hamburger dropdown
   const toggleDropdown = () => {
     setIsDropdownOpen(!isDropdownOpen)
   }
 
+  // Sign out
+  const handleSignOut = async () => {
+    await logout() // remove token from storage
+    router.push("/login") // navigate to login
+  }
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
+      {/* --- Single White Header Bar --- */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Anvaya</Text>
+        {/* Centered Brand (logo + name) */}
+        <View style={styles.brandContainer}>
+          <Image
+            source={require("../assets/images/icon.jpeg")} // Adjust path as needed
+            style={styles.appIcon}
+            resizeMode="contain"
+          />
+          <Text style={styles.appName}>Anvaya</Text>
+        </View>
 
-        {/* Right section: profile icon, greeting, hamburger */}
-        <View style={styles.rightContainer}>
-          <MaterialIcons name="account-circle" size={24} color="#000" style={{ marginRight: 6 }} />
-          <Text style={styles.greeting}>Hi {doctorName}</Text>
-          <TouchableOpacity onPress={toggleDropdown} style={styles.hamburgerButton}>
+        {/* Right side icons: Info, Greeting, Hamburger */}
+        <View style={styles.rightControls}>
+          {/* Info icon */}
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => router.push("/info")}
+          >
+            <MaterialIcons name="info-outline" size={24} color="#000" />
+          </TouchableOpacity>
+
+          {/* Greeting with doctor's name */}
+          <View style={styles.profileContainer}>
+            <MaterialIcons
+              name="account-circle"
+              size={24}
+              color="#000"
+              style={styles.profileIcon}
+            />
+            <Text style={styles.greeting}>
+              Hi {doctorName || "Doctor"}
+            </Text>
+          </View>
+
+          {/* Hamburger icon for dropdown */}
+          <TouchableOpacity style={styles.iconButton} onPress={toggleDropdown}>
             <MaterialIcons name="menu" size={24} color="#000" />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Dropdown menu (Settings + Sign Out) */}
+      {/* --- Dropdown Menu (Settings + Sign Out) --- */}
       {isDropdownOpen && (
         <View style={styles.dropdownMenu}>
           <TouchableOpacity
@@ -97,7 +144,7 @@ export default function Dashboard() {
         </View>
       )}
 
-      {/* Main content (ScrollView + Card Grid) */}
+      {/* --- Main Content (Cards) --- */}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
@@ -137,7 +184,6 @@ export default function Dashboard() {
   )
 }
 
-// Web-specific styles
 const webStyles = {
   webCard: {
     transition: "0.3s",
@@ -151,36 +197,57 @@ const styles = StyleSheet.create({
     backgroundColor: "#f5f5f5",
     position: "relative",
   },
-  // Header: white background, black text
+
+  /* -------------------- HEADER -------------------- */
   header: {
     backgroundColor: "#fff",
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
   },
-  headerTitle: {
+  brandContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  appIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginRight: 8,
+  },
+  appName: {
     fontSize: 20,
     fontWeight: "bold",
     color: "#000",
-    flex: 1,
   },
-  rightContainer: {
+  rightControls: {
     flexDirection: "row",
     alignItems: "center",
+  },
+  iconButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  profileContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 8,
+  },
+  profileIcon: {
+    marginRight: 4,
   },
   greeting: {
     fontSize: 16,
     color: "#000",
-    marginRight: 12,
-  },
-  hamburgerButton: {
-    padding: 4,
   },
 
-  // Dropdown menu
+  /* -------------------- DROPDOWN MENU -------------------- */
   dropdownMenu: {
     position: "absolute",
-    top: 64,
+    top: 58, // just below the header
     right: 16,
     backgroundColor: "#fff",
     borderRadius: 8,
@@ -200,29 +267,31 @@ const styles = StyleSheet.create({
     color: "#333",
   },
 
-  // Main scroll content
+  /* -------------------- MAIN CONTENT -------------------- */
   scrollView: {
     flex: 1,
   },
   content: {
     padding: 16,
   },
+
   grid: {
-    // For mobile fallback
+    // fallback for mobile if not on web
     flexDirection: "column",
   },
 
-  // Card styles
+  /* -------------------- CARD -------------------- */
   card: {
     backgroundColor: "#fff",
     borderRadius: 8,
     padding: 20,
+    minHeight: 140,
+    // Shadow
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    minHeight: 140,
   },
   iconContainer: {
     marginBottom: 12,
