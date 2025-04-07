@@ -55,11 +55,10 @@ function FloatingLabelInput({
   const labelStyle = {
     position: "absolute",
     left: iconName ? 40 : 16, // Shift label if there's an icon
-    zIndex: 2,                // Keep label above text input
-    pointerEvents: "none",     // Allow clicks/taps to pass through label
+    zIndex: 2, // Keep label above text input
+    pointerEvents: "none", // Allow clicks/taps to pass through label
     top: labelAnim.interpolate({
       inputRange: [0, 1],
-      // Moves from near middle of the container (24) up to 0
       outputRange: [24, 0],
     }),
     fontSize: labelAnim.interpolate({
@@ -84,7 +83,7 @@ function FloatingLabelInput({
         />
       )}
 
-      {/* Floating label (pointerEvents: none) */}
+      {/* Floating label */}
       <Animated.Text style={labelStyle}>{label}</Animated.Text>
 
       {/* TextInput */}
@@ -125,6 +124,11 @@ export default function LoginScreen() {
   const { signIn, isLoading, setIsLoading } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
 
+  // New state for role selection and animation
+  const [selectedRole, setSelectedRole] = useState("doctor")
+  const toggleAnim = useRef(new Animated.Value(0)).current
+  const [toggleWidth, setToggleWidth] = useState(0)
+
   useEffect(() => {
     const subscription = Dimensions.addEventListener("change", ({ window }) => {
       setWindowDimensions(window)
@@ -159,6 +163,17 @@ export default function LoginScreen() {
 
   const handleSignUpPatient = () => {
     router.push("/register-patient")
+  }
+
+  // Handler for toggling between roles with fluid animation
+  const handleToggle = (role) => {
+    setSelectedRole(role)
+    Animated.timing(toggleAnim, {
+      toValue: role === "doctor" ? 0 : 1,
+      duration: 300,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: false,
+    }).start()
   }
 
   return (
@@ -201,13 +216,58 @@ export default function LoginScreen() {
               <View style={styles.logoCircle}>
                 <MaterialIcons name="person" size={40} color="#007BFF" />
               </View>
-              <Text style={styles.welcomeText}>Welcome</Text>
+              <Text style={styles.welcomeText}>Welcome to Anvaya</Text>
               <Text style={styles.subtitleText}>Please login to continue</Text>
+            </View>
+
+            {/* Fluid Toggle for Doctor / Patient */}
+            <View
+              style={styles.toggleContainer}
+              onLayout={(e) => setToggleWidth(e.nativeEvent.layout.width)}
+            >
+              <Animated.View
+                style={[
+                  styles.toggleIndicator,
+                  {
+                    width: toggleWidth / 2,
+                    left: toggleAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, toggleWidth / 2],
+                    }),
+                  },
+                ]}
+              />
+              <TouchableOpacity
+                style={styles.toggleButton}
+                onPress={() => handleToggle("doctor")}
+              >
+                <Text
+                  style={[
+                    styles.toggleText,
+                    selectedRole === "doctor" && styles.activeToggleText,
+                  ]}
+                >
+                  Doctor
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.toggleButton}
+                onPress={() => handleToggle("patient")}
+              >
+                <Text
+                  style={[
+                    styles.toggleText,
+                    selectedRole === "patient" && styles.activeToggleText,
+                  ]}
+                >
+                  Patient
+                </Text>
+              </TouchableOpacity>
             </View>
 
             {/* Doctor ID / Patient ID */}
             <FloatingLabelInput
-              label="Doctor ID or Patient ID"
+              label="Email Address"
               iconName="email"
               value={emailPh}
               onChangeText={setEmailPh}
@@ -240,17 +300,21 @@ export default function LoginScreen() {
               {isLoading ? (
                 <ActivityIndicator size="small" color="#ffffff" />
               ) : (
-                <Text style={styles.loginButtonText}>Login</Text>
+                <Text style={styles.loginButtonText}>Login Securely</Text>
               )}
             </TouchableOpacity>
 
-            {/* Sign Up */}
+            {/* Sign Up Section */}
             <View style={styles.signupContainer}>
-              <Text style={styles.signupText}>Don't have an account?</Text>
+              <Text style={styles.signupText}>New here? Register with Anvaya</Text>
             </View>
 
             <TouchableOpacity
-              style={[styles.signupButton, styles.doctorButton, isWeb && styles.webButton]}
+              style={[
+                styles.signupButton,
+                styles.doctorButton,
+                isWeb && styles.webButton,
+              ]}
               onPress={handleSignUpDoctor}
             >
               <MaterialIcons
@@ -259,11 +323,15 @@ export default function LoginScreen() {
                 color="#fff"
                 style={styles.buttonIcon}
               />
-              <Text style={styles.signupButtonText}>Sign Up as Doctor</Text>
+              <Text style={styles.signupButtonText}>Doctor</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.signupButton, styles.patientButton, isWeb && styles.webButton]}
+              style={[
+                styles.signupButton,
+                styles.patientButton,
+                isWeb && styles.webButton,
+              ]}
               onPress={handleSignUpPatient}
             >
               <MaterialIcons
@@ -272,7 +340,7 @@ export default function LoginScreen() {
                 color="#fff"
                 style={styles.buttonIcon}
               />
-              <Text style={styles.signupButtonText}>Sign Up as Patient</Text>
+              <Text style={styles.signupButtonText}>Patient</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -280,12 +348,23 @@ export default function LoginScreen() {
 
       {/* Footer */}
       <View style={styles.footer}>
-        <Image
-          source={require("../assets/images/dsetlogo.webp")}
-          style={styles.footerLogo}
-          resizeMode="contain"
-        />
-        <Text style={styles.footerText}>© 2025 Anvaya. All rights reserved.</Text>
+        <View style={styles.footerLinks}>
+          <TouchableOpacity>
+            <Text style={styles.footerLink}>Help</Text>
+          </TouchableOpacity>
+          <TouchableOpacity>
+            <Text style={styles.footerLink}>Privacy</Text>
+          </TouchableOpacity>
+          <TouchableOpacity>
+            <Text style={styles.footerLink}>AI ChatBot</Text>
+          </TouchableOpacity>
+          <Text style={styles.footerLink}>Powered by</Text>
+          <Image
+            source={require("../assets/images/dsetlogo.webp")}
+            style={styles.footerLogo}
+            resizeMode="contain"
+          />
+        </View>
       </View>
     </SafeAreaView>
   )
@@ -398,7 +477,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 16,
     paddingHorizontal: 16,
-    // Provide enough vertical space for label to move within
     paddingTop: 24,
     paddingBottom: 8,
   },
@@ -472,20 +550,57 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
 
+  /* Toggle styles for Doctor/Patient */
+  toggleContainer: {
+    flexDirection: "row",
+    position: "relative",
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#e0e0e0",
+    marginBottom: 20,
+    overflow: "hidden",
+  },
+  toggleIndicator: {
+    position: "absolute",
+    height: "100%",
+    backgroundColor: "#4B0082",
+    borderRadius: 20,
+  },
+  toggleButton: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 1,
+  },
+  toggleText: {
+    fontSize: 16,
+    color: "#4B0082",
+    fontWeight: "bold",
+  },
+  activeToggleText: {
+    color: "#fff",
+  },
+
   /* Footer */
   footer: {
-    alignItems: "center",
     padding: 12,
     backgroundColor: "#f0f0f0",
   },
-  footerText: {
-    fontSize: 12,
-    color: "#999",
-    marginTop: 4,
+  footerLinks: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    flexWrap: "wrap",
+  },
+  footerLink: {
+    fontSize: 14,
+    color: "#555",
+    marginHorizontal: 5,
   },
   footerLogo: {
     width: 60,
     height: 20,
     opacity: 0.8,
+    marginLeft: 5,
   },
 })
