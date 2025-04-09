@@ -295,36 +295,37 @@ export default function RegisterPatient() {
     setPasswordChecks({ length, lower, upper, digit })
   }
 
-  const handleRegister = async (): Promise<void> => {
-    setIsSubmitting(true)
-    try {
-      // Rely on Yup validation for confirmPassword
-      await PatientSchema.validate(formData, { abortEarly: false })
-      console.log("Registering patient with:", formData)
-      const res = await createPatient(formData)
-      if (res.success) {
-        showToast("success", "Registration successful")
-        router.push("/login")
-      } else {
-        showToast("error", res.message ?? "Registration failed")
-      }
-    } catch (error) {
-      if (error instanceof Yup.ValidationError) {
-        const validationErrors: FormErrors = {}
-        error.inner.forEach((err) => {
-          if (err.path) {
-            validationErrors[err.path] = err.message
-          }
-        })
-        setErrors(validationErrors)
-      } else {
-        showToast("error", "An error occurred. Please try again.")
-        console.error("Registration error:", error)
-      }
-    } finally {
-      setIsSubmitting(false)
+const handleRegister = async (): Promise<void> => {
+  setIsSubmitting(true)
+  try {
+    await PatientSchema.validate(formData, { abortEarly: false })
+    console.log("Registering patient with:", formData)
+    const res = await createPatient(formData)
+    if (res.success) {
+      showToast("success", "Registration successful")
+      // Directing to the patient dashboard using the full route path
+      router.push("/(authenticated)/(patient)/dashboard")
+    } else {
+      showToast("error", res.message ?? "Registration failed")
     }
+  } catch (error) {
+    if (error instanceof Yup.ValidationError) {
+      const validationErrors: FormErrors = {}
+      error.inner.forEach((err) => {
+        if (err.path) {
+          validationErrors[err.path] = err.message
+        }
+      })
+      setErrors(validationErrors)
+    } else {
+      showToast("error", "An error occurred. Please try again.")
+      console.error("Registration error:", error)
+    }
+  } finally {
+    setIsSubmitting(false)
   }
+}
+
 
   const handleSelectCountry = (country: typeof COUNTRIES[0]) => {
     setSelectedCountry(country)
