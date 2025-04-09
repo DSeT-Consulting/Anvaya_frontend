@@ -18,10 +18,54 @@ import {
   Easing,
 } from "react-native"
 import { MaterialIcons } from "@expo/vector-icons"
+// Using Picker for language selection
+import { Picker } from "@react-native-picker/picker"
+import { LinearGradient } from "expo-linear-gradient"
 import { router } from "expo-router"
 import { useAuth } from "@/hooks/useAuth"
 import { login } from "@/api"
 import { showToast } from "@/utils/toast"
+
+// Translation dictionaries for English, Hindi, and Kannada
+const translations = {
+  en: {
+    screenTitle: "Welcome to Anavaya",
+    subtitle: "Please login to continue",
+    mobileEmail: "Mobile or email",
+    otpPassword: "OTP or Password",
+    loginButton: "Login Securely",
+    register: "New here? Register with Anavaya",
+  },
+  hi: {
+    screenTitle: "अनवाया में आपका स्वागत है",
+    subtitle: "कृपया लॉगिन करें",
+    mobileEmail: "मोबाइल या ईमेल",
+    otpPassword: "ओटीपी या पासवर्ड",
+    loginButton: "सुरक्षित रूप से लॉगिन करें",
+    register: "नया यहां? अनवाया के साथ रजिस्टर करें",
+  },
+  kn: {
+    screenTitle: "ಅನವಾಯಕ್ಕೆ ಸ್ವಾಗತ",
+    subtitle: "ದಯವಿಟ್ಟು ಲಾಗಿನ್ ಮಾಡಿ",
+    mobileEmail: "ಮೊಬೈಲ್ ಅಥವಾ ಇಮೇಲ್",
+    otpPassword: "OTP ಅಥವಾ ಪಾಸ್‌ವರ್ಡ್",
+    loginButton: "ಸುರಕ್ಷಿತವಾಗಿ ಲಾಗಿನ್ ಮಾಡಿ",
+    register: "ಹೊಸವಸ್ತೂ? ಅನವಾಯದೊಂದಿಗೆ ನೋಂದಣಿ ಮಾಡಿ",
+  },
+}
+
+const roleTranslations = {
+  doctor: {
+    en: "Doctor",
+    hi: "डॉक्टर",
+    kn: "ಡಾಕ್ಟರ್",
+  },
+  patient: {
+    en: "Patient",
+    hi: "मरीज",
+    kn: "ರೋಗಿ",
+  },
+}
 
 /**
  * FloatingLabelInput Component
@@ -38,8 +82,6 @@ function FloatingLabelInput({
   isWeb,
 }) {
   const [isFocused, setIsFocused] = useState(false)
-
-  // Animated value: 0 = unfocused/empty, 1 = focused or has value
   const labelAnim = useRef(new Animated.Value(value ? 1 : 0)).current
 
   useEffect(() => {
@@ -47,16 +89,15 @@ function FloatingLabelInput({
       toValue: isFocused || !!value ? 1 : 0,
       duration: 200,
       easing: Easing.linear,
-      useNativeDriver: false, // We need layout animations
+      useNativeDriver: false,
     }).start()
   }, [isFocused, value, labelAnim])
 
-  // Interpolate label’s position & font size
   const labelStyle = {
     position: "absolute",
-    left: iconName ? 40 : 16, // Shift label if there's an icon
-    zIndex: 2, // Keep label above text input
-    pointerEvents: "none", // Allow clicks/taps to pass through label
+    left: iconName ? 40 : 16,
+    zIndex: 2,
+    pointerEvents: "none",
     top: labelAnim.interpolate({
       inputRange: [0, 1],
       outputRange: [24, 0],
@@ -67,28 +108,23 @@ function FloatingLabelInput({
     }),
     color: labelAnim.interpolate({
       inputRange: [0, 1],
-      outputRange: ["#9e9e9e", "#007BFF"],
+      outputRange: ["#9e9e9e", "#0077B6"],
     }),
   }
 
   return (
     <View style={[styles.inputContainer, isWeb && styles.webInputWrapper]}>
-      {/* Optional left icon */}
       {iconName && (
         <MaterialIcons
           name={iconName}
           size={20}
-          color="#007BFF"
+          color="#0077B6"
           style={styles.inputIcon}
         />
       )}
-
-      {/* Floating label */}
       <Animated.Text style={labelStyle}>{label}</Animated.Text>
-
-      {/* TextInput */}
       <TextInput
-        style={[styles.textField, isWeb && styles.webInputStyle]}
+        style={[styles.textField, isWeb && styles.webTextField]}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
         value={value}
@@ -96,8 +132,6 @@ function FloatingLabelInput({
         secureTextEntry={secureTextEntry && !showPassword}
         autoCapitalize="none"
       />
-
-      {/* Show/hide password icon (if applicable) */}
       {showPasswordToggle && (
         <TouchableOpacity
           onPress={() => setShowPassword(!showPassword)}
@@ -118,13 +152,15 @@ function FloatingLabelInput({
  * Main Login Screen
  */
 export default function LoginScreen() {
+  // Language selection state: "en", "hi", or "kn"
+  const [selectedLanguage, setSelectedLanguage] = useState("en")
   const [emailPh, setEmailPh] = useState("")
   const [password, setPassword] = useState("")
   const [windowDimensions, setWindowDimensions] = useState(Dimensions.get("window"))
   const { signIn, isLoading, setIsLoading } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
 
-  // New state for role selection and animation
+  // Role toggle state
   const [selectedRole, setSelectedRole] = useState("doctor")
   const toggleAnim = useRef(new Animated.Value(0)).current
   const [toggleWidth, setToggleWidth] = useState(0)
@@ -157,15 +193,15 @@ export default function LoginScreen() {
     }
   }
 
-  const handleSignUpDoctor = () => {
-    router.push("/register-doctor")
+  // When registration is triggered, pass along the current language preference
+  const handleRegister = () => {
+    if (selectedRole === "doctor") {
+      router.push(`/register-doctor?lang=${selectedLanguage}`)
+    } else {
+      router.push(`/register-patient?lang=${selectedLanguage}`)
+    }
   }
 
-  const handleSignUpPatient = () => {
-    router.push("/register-patient")
-  }
-
-  // Handler for toggling between roles with fluid animation
   const handleToggle = (role) => {
     setSelectedRole(role)
     Animated.timing(toggleAnim, {
@@ -176,197 +212,198 @@ export default function LoginScreen() {
     }).start()
   }
 
+  const handleLanguageChange = (lang) => {
+    setSelectedLanguage(lang)
+  }
+
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLogoContainer}>
-          <Image
-            source={require("../assets/images/icon.jpeg")}
-            style={styles.headerLogo}
-            resizeMode="contain"
-          />
-        </View>
-        <Text style={styles.headerTitle}>Anvaya</Text>
-        <TouchableOpacity
-          style={styles.infoIconContainer}
-          onPress={() => router.push("/info")}
-        >
-          <MaterialIcons name="info-outline" size={24} color="#000" />
-        </TouchableOpacity>
-      </View>
-
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.content}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <View
-            style={[
-              styles.loginCard,
-              isWideScreen ? { width: 500, maxWidth: "90%" } : { width: "100%" },
-            ]}
-          >
-            {/* Logo / Title */}
-            <View style={styles.logoContainer}>
-              <View style={styles.logoCircle}>
-                <MaterialIcons name="person" size={40} color="#007BFF" />
-              </View>
-              <Text style={styles.welcomeText}>Welcome to Anvaya</Text>
-              <Text style={styles.subtitleText}>Please login to continue</Text>
-            </View>
-
-            {/* Fluid Toggle for Doctor / Patient */}
-            <View
-              style={styles.toggleContainer}
-              onLayout={(e) => setToggleWidth(e.nativeEvent.layout.width)}
-            >
-              <Animated.View
-                style={[
-                  styles.toggleIndicator,
-                  {
-                    width: toggleWidth / 2,
-                    left: toggleAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0, toggleWidth / 2],
-                    }),
-                  },
-                ]}
-              />
-              <TouchableOpacity
-                style={styles.toggleButton}
-                onPress={() => handleToggle("doctor")}
-              >
-                <Text
-                  style={[
-                    styles.toggleText,
-                    selectedRole === "doctor" && styles.activeToggleText,
-                  ]}
-                >
-                  Doctor
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.toggleButton}
-                onPress={() => handleToggle("patient")}
-              >
-                <Text
-                  style={[
-                    styles.toggleText,
-                    selectedRole === "patient" && styles.activeToggleText,
-                  ]}
-                >
-                  Patient
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Doctor ID / Patient ID */}
-            <FloatingLabelInput
-              label="Email Address"
-              iconName="email"
-              value={emailPh}
-              onChangeText={setEmailPh}
-              isWeb={isWeb}
+    <LinearGradient
+      colors={["#03045E", "#0077B6", "#00B4D8", "#90E0EF"]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.gradientContainer}
+    >
+      <SafeAreaView style={{ flex: 1 }}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerLogoContainer}>
+            <Image
+              source={require("../assets/images/icon.jpeg")}
+              style={styles.headerLogo}
+              resizeMode="contain"
             />
-
-            {/* Password */}
-            <FloatingLabelInput
-              label="Password"
-              iconName="lock"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              showPasswordToggle
-              showPassword={showPassword}
-              setShowPassword={setShowPassword}
-              isWeb={isWeb}
-            />
-
-            {/* Login Button */}
-            <TouchableOpacity
-              style={[
-                styles.loginButton,
-                isWeb && styles.webButton,
-                isLoading && styles.disabledButton,
-              ]}
-              onPress={handleLogin}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator size="small" color="#ffffff" />
-              ) : (
-                <Text style={styles.loginButtonText}>Login Securely</Text>
-              )}
-            </TouchableOpacity>
-
-            {/* Sign Up Section */}
-            <View style={styles.signupContainer}>
-              <Text style={styles.signupText}>New here? Register with Anvaya</Text>
-            </View>
-
-            <TouchableOpacity
-              style={[
-                styles.signupButton,
-                styles.doctorButton,
-                isWeb && styles.webButton,
-              ]}
-              onPress={handleSignUpDoctor}
-            >
-              <MaterialIcons
-                name="medical-services"
-                size={18}
-                color="#fff"
-                style={styles.buttonIcon}
-              />
-              <Text style={styles.signupButtonText}>Doctor</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.signupButton,
-                styles.patientButton,
-                isWeb && styles.webButton,
-              ]}
-              onPress={handleSignUpPatient}
-            >
-              <MaterialIcons
-                name="person"
-                size={18}
-                color="#fff"
-                style={styles.buttonIcon}
-              />
-              <Text style={styles.signupButtonText}>Patient</Text>
-            </TouchableOpacity>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-
-      {/* Footer */}
-      <View style={styles.footer}>
-        <View style={styles.footerLinks}>
-          <TouchableOpacity>
-            <Text style={styles.footerLink}>Help</Text>
+          <Text style={styles.headerTitle}>Anavya</Text>
+          <TouchableOpacity
+            style={styles.infoIconContainer}
+            onPress={() => router.push("/info")}
+          >
+            <MaterialIcons name="info-outline" size={24} color="#000" />
           </TouchableOpacity>
-          <TouchableOpacity>
-            <Text style={styles.footerLink}>Privacy</Text>
-          </TouchableOpacity>
-          <TouchableOpacity>
-            <Text style={styles.footerLink}>AI ChatBot</Text>
-          </TouchableOpacity>
-          <Text style={styles.footerLink}>Powered by</Text>
-          <Image
-            source={require("../assets/images/dsetlogo.webp")}
-            style={styles.footerLogo}
-            resizeMode="contain"
-          />
         </View>
-      </View>
-    </SafeAreaView>
+
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.content}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
+        >
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Login Card with blue gradient */}
+            <LinearGradient
+              colors={["#03045E", "#0077B6", "#00B4D8", "#90E0EF"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.loginCard}
+            >
+              {/* Doctor Asset */}
+              <View style={styles.doctorAssetContainer}>
+                <Image
+                  source={require("../assets/images/doctor.png")}
+                  style={styles.doctorAsset}
+                  resizeMode="contain"
+                />
+              </View>
+              {/* Title & Subtitle */}
+              <Text style={styles.screenTitle}>
+                {translations[selectedLanguage].screenTitle}
+              </Text>
+              <Text style={styles.subtitleText}>
+                {translations[selectedLanguage].subtitle}
+              </Text>
+              {/* Divider */}
+              <View style={styles.dividerContainer}>
+                <View style={styles.divider} />
+              </View>
+              {/* Role Toggle */}
+              <View
+                style={styles.toggleContainer}
+                onLayout={(e) => setToggleWidth(e.nativeEvent.layout.width)}
+              >
+                <Animated.View
+                  style={[
+                    styles.toggleIndicator,
+                    {
+                      width: toggleWidth / 2,
+                      left: toggleAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0, toggleWidth / 2],
+                      }),
+                    },
+                  ]}
+                />
+                <TouchableOpacity
+                  style={styles.toggleButton}
+                  onPress={() => handleToggle("doctor")}
+                >
+                  <Text
+                    style={[
+                      styles.toggleText,
+                      selectedRole === "doctor" && styles.activeToggleText,
+                    ]}
+                  >
+                    {roleTranslations.doctor[selectedLanguage]}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.toggleButton}
+                  onPress={() => handleToggle("patient")}
+                >
+                  <Text
+                    style={[
+                      styles.toggleText,
+                      selectedRole === "patient" && styles.activeToggleText,
+                    ]}
+                  >
+                    {roleTranslations.patient[selectedLanguage]}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              {/* Floating Inputs */}
+              <FloatingLabelInput
+                label={translations[selectedLanguage].mobileEmail}
+                iconName="email"
+                value={emailPh}
+                onChangeText={setEmailPh}
+                isWeb={isWeb}
+              />
+              <FloatingLabelInput
+                label={translations[selectedLanguage].otpPassword}
+                iconName="lock"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                showPasswordToggle
+                showPassword={showPassword}
+                setShowPassword={setShowPassword}
+                isWeb={isWeb}
+              />
+              {/* Login Button */}
+              <TouchableOpacity
+                style={[
+                  styles.loginButton,
+                  isWeb && styles.webButton,
+                  isLoading && styles.disabledButton,
+                ]}
+                onPress={handleLogin}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Text style={styles.loginButtonText}>
+                    {translations[selectedLanguage].loginButton}
+                  </Text>
+                )}
+              </TouchableOpacity>
+              {/* Registration Link */}
+              <TouchableOpacity onPress={handleRegister} style={{ marginTop: 10 }}>
+                <Text style={styles.registerText}>
+                  {translations[selectedLanguage].register}
+                </Text>
+              </TouchableOpacity>
+              {/* Language Dropdown */}
+              <View style={styles.languageDropdownContainer}>
+                <Picker
+                  selectedValue={selectedLanguage}
+                  style={styles.languagePicker}
+                  dropdownIconColor="#fff"
+                  onValueChange={(itemValue) => handleLanguageChange(itemValue)}
+                  mode="dropdown"
+                >
+                  <Picker.Item label="English" value="en" />
+                  <Picker.Item label="हिन्दी" value="hi" />
+                  <Picker.Item label="ಕನ್ನಡ" value="kn" />
+                </Picker>
+              </View>
+            </LinearGradient>
+          </ScrollView>
+        </KeyboardAvoidingView>
+
+        {/* Footer */}
+        <View style={styles.footer}>
+          <View style={styles.footerLinks}>
+            <TouchableOpacity>
+              <Text style={styles.footerLink}>Help</Text>
+            </TouchableOpacity>
+            <TouchableOpacity>
+              <Text style={styles.footerLink}>Privacy</Text>
+            </TouchableOpacity>
+            <TouchableOpacity>
+              <Text style={styles.footerLink}>AI ChatBot</Text>
+            </TouchableOpacity>
+            <Text style={styles.footerLink}>Powered by</Text>
+            <Image
+              source={require("../assets/images/dsetlogo.webp")}
+              style={styles.footerLogo}
+              resizeMode="contain"
+            />
+          </View>
+        </View>
+      </SafeAreaView>
+    </LinearGradient>
   )
 }
 
@@ -374,19 +411,25 @@ export default function LoginScreen() {
  * Styles
  */
 const styles = StyleSheet.create({
-  /* Removes outline on web */
-  webInputStyle: {
-    outlineWidth: 0,
-    outlineColor: "transparent",
-    outlineStyle: "none",
-  },
-
-  container: {
+  gradientContainer: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
   },
 
-  /* Header (white top bar) */
+  /* Language Dropdown */
+  languageDropdownContainer: {
+    marginTop: 16,
+    borderRadius: 8,
+    overflow: "hidden",
+    backgroundColor: "#000",
+  },
+  languagePicker: {
+    height: 40,
+    color: "#fff",
+    width: "100%",
+    backgroundColor: "#000",
+  },
+
+  /* Header */
   header: {
     backgroundColor: "#fff",
     padding: 16,
@@ -429,46 +472,96 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
-  },
-  loginCard: {
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    padding: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    alignSelf: "center",
+    paddingVertical: 40,
+    paddingHorizontal: 20,
   },
 
-  /* Intro logo & text */
-  logoContainer: {
-    alignItems: "center",
-    marginBottom: 30,
+  /* Login Card with gradient */
+  loginCard: {
+    borderRadius: 10,
+    padding: 24,
+    alignSelf: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+    width: "90%",
+    maxWidth: 400,
   },
-  logoCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#e0f0ff",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  welcomeText: {
-    fontSize: 24,
+
+  screenTitle: {
+    fontSize: 22,
     fontWeight: "bold",
-    color: "#333",
+    textAlign: "center",
     marginBottom: 8,
+    color: "#fff",
   },
   subtitleText: {
     fontSize: 14,
-    color: "#666",
+    textAlign: "center",
+    marginBottom: 16,
+    color: "#fff",
   },
 
-  /* FloatingLabelInput container */
+  /* Doctor Asset */
+  doctorAssetContainer: {
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  doctorAsset: {
+    width: 80,
+    height: 80,
+  },
+
+  /* Divider */
+  dividerContainer: {
+    marginVertical: 16,
+    alignItems: "center",
+  },
+  divider: {
+    width: "80%",
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.7)",
+  },
+
+  /* Toggle Container (Box within a Box) */
+  toggleContainer: {
+    flexDirection: "row",
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#0077B6",
+    marginBottom: 20,
+    overflow: "hidden",
+    alignItems: "center",
+    position: "relative",
+  },
+  toggleIndicator: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    height: "100%",
+    backgroundColor: "#90E0EF",
+    borderRadius: 20,
+  },
+  toggleButton: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 2,
+  },
+  toggleText: {
+    fontSize: 16,
+    color: "#03045E",
+    fontWeight: "bold",
+  },
+  activeToggleText: {
+    color: "#fff",
+  },
+
+  /* FloatingLabelInput */
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -483,6 +576,11 @@ const styles = StyleSheet.create({
   inputIcon: {
     marginRight: 12,
   },
+  webTextField: {
+    outlineWidth: 0,
+    outlineStyle: "none",
+    outlineColor: "transparent",
+  },
   textField: {
     flex: 1,
     fontSize: 16,
@@ -496,16 +594,15 @@ const styles = StyleSheet.create({
     minHeight: 50,
   },
 
-  /* Buttons */
+  /* Login Button */
   loginButton: {
-    backgroundColor: "#4B0082",
+    backgroundColor: "#0077B6",
     borderRadius: 30,
     paddingVertical: 14,
     alignItems: "center",
-    marginBottom: 20,
+    marginTop: 4,
   },
   webButton: {
-    paddingVertical: 16,
     cursor: "pointer",
   },
   loginButtonText: {
@@ -518,73 +615,33 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
 
-  /* Sign up text and buttons */
-  signupContainer: {
-    alignItems: "center",
-    marginBottom: 15,
-  },
-  signupText: {
+  /* Registration link text */
+  registerText: {
     fontSize: 14,
-    color: "#666",
-  },
-  signupButton: {
-    borderRadius: 30,
-    paddingVertical: 12,
-    alignItems: "center",
-    marginBottom: 10,
-    flexDirection: "row",
-    justifyContent: "center",
-  },
-  doctorButton: {
-    backgroundColor: "#007BFF",
-  },
-  patientButton: {
-    backgroundColor: "#6F42C1",
-  },
-  signupButtonText: {
+    textAlign: "center",
     color: "#fff",
-    fontSize: 14,
-    fontWeight: "bold",
-  },
-  buttonIcon: {
-    marginRight: 8,
+    textDecorationLine: "underline",
+    fontWeight: "600",
   },
 
-  /* Toggle styles for Doctor/Patient */
-  toggleContainer: {
-    flexDirection: "row",
-    position: "relative",
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#e0e0e0",
-    marginBottom: 20,
+  /* Language Dropdown styling */
+  languageDropdownContainer: {
+    marginTop: 16,
+    borderRadius: 8,
     overflow: "hidden",
+    backgroundColor: "#000",
   },
-  toggleIndicator: {
-    position: "absolute",
-    height: "100%",
-    backgroundColor: "#4B0082",
-    borderRadius: 20,
-  },
-  toggleButton: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 1,
-  },
-  toggleText: {
-    fontSize: 16,
-    color: "#4B0082",
-    fontWeight: "bold",
-  },
-  activeToggleText: {
+  languagePicker: {
+    height: 40,
     color: "#fff",
+    width: "100%",
+    backgroundColor: "#000",
   },
 
   /* Footer */
   footer: {
+    backgroundColor: "transparent",
     padding: 12,
-    backgroundColor: "#f0f0f0",
   },
   footerLinks: {
     flexDirection: "row",
@@ -594,7 +651,7 @@ const styles = StyleSheet.create({
   },
   footerLink: {
     fontSize: 14,
-    color: "#555",
+    color: "#fff",
     marginHorizontal: 5,
   },
   footerLogo: {
