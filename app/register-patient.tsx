@@ -22,6 +22,7 @@ import {
   type TextInputFocusEventData,
 } from "react-native"
 import { MaterialIcons, Ionicons } from "@expo/vector-icons"
+import { Picker } from "@react-native-picker/picker"
 import { LinearGradient } from "expo-linear-gradient"
 import { router } from "expo-router"
 import * as Yup from "yup"
@@ -79,7 +80,7 @@ const PatientSchema = Yup.object().shape({
 })
 
 // -------------------------
-// FloatingLabelInput Component
+// FloatingLabelInput Component (for registration)
 // -------------------------
 function FloatingLabelInput({
   label,
@@ -116,7 +117,6 @@ function FloatingLabelInput({
     }).start()
   }, [isFocused, value, labelAnim])
 
-  // Label style matching the doctors.tsx UI
   const labelStyle = {
     position: "absolute" as const,
     left: iconName ? 40 : 16,
@@ -202,7 +202,8 @@ export default function RegisterPatient() {
     upper: false,
     digit: false,
   })
-  // Country selection (if needed)
+
+  // Define a country list and use native Picker for country selection
   const COUNTRIES = [
     { name: "United States", code: "US", callingCode: "+1", flag: "🇺🇸" },
     { name: "United Kingdom", code: "GB", callingCode: "+44", flag: "🇬🇧" },
@@ -211,7 +212,6 @@ export default function RegisterPatient() {
     { name: "Australia", code: "AU", callingCode: "+61", flag: "🇦🇺" },
   ]
   const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[2])
-  const [showCountryModal, setShowCountryModal] = useState(false)
 
   const [windowDimensions, setWindowDimensions] = useState(Dimensions.get("window"))
   const isWideScreen = windowDimensions.width > 768
@@ -305,7 +305,9 @@ export default function RegisterPatient() {
       }
       await PatientSchema.validate(formData, { abortEarly: false })
       console.log("Registering patient with:", formData)
-      const res = await createPatient(formData)
+      // Combine selected country's calling code with phone number:
+      const finalPhone = `${selectedCountry.callingCode} ${formData.phoneNumber}`
+      const res = await createPatient({ ...formData, phoneNumber: finalPhone })
       if (res.success) {
         showToast("success", "Registration successful")
         router.push("/login")
@@ -330,12 +332,7 @@ export default function RegisterPatient() {
     }
   }
 
-  const handleSelectCountry = (country: typeof COUNTRIES[0]) => {
-    setSelectedCountry(country)
-    setShowCountryModal(false)
-  }
-
-  // For gender selection – using a simple array of options
+  // Gender selection
   const GENDER_OPTIONS = [
     { label: "Male", value: "male" },
     { label: "Female", value: "female" },
@@ -424,7 +421,6 @@ export default function RegisterPatient() {
               />
               {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
 
-              {/* Optional Password Checks UI */}
               <View style={styles.passwordChecksContainer}>
                 <PasswordCheckItem label="Min. 8 characters" isValid={passwordChecks.length} />
                 <PasswordCheckItem label="At least one lowercase letter" isValid={passwordChecks.lower} />
@@ -445,6 +441,28 @@ export default function RegisterPatient() {
                 onBlur={handleBlur("confirmPassword")}
               />
               {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
+
+              {/* Country Picker for phone number selection */}
+              <View style={styles.countryPickerContainer}>
+                <Picker
+                  selectedValue={selectedCountry.callingCode}
+                  style={styles.countryPicker}
+                  onValueChange={(itemValue) => {
+                    const selected = COUNTRIES.find(c => c.callingCode === itemValue)
+                    if (selected) setSelectedCountry(selected)
+                  }}
+                  mode="dropdown"
+                  dropdownIconColor="#fff"
+                >
+                  {COUNTRIES.map(country => (
+                    <Picker.Item
+                      key={country.callingCode}
+                      label={`${country.flag} ${country.name} (${country.callingCode})`}
+                      value={country.callingCode}
+                    />
+                  ))}
+                </Picker>
+              </View>
 
               <FloatingLabelInput
                 label="Phone Number"
@@ -509,7 +527,7 @@ export default function RegisterPatient() {
                 <Text style={styles.alternateLinkText}>Not a Patient? Register as Doctor</Text>
               </TouchableOpacity>
 
-              {/* Already have an account? */}
+              {/* Already have an account? Login */}
               <View style={styles.loginContainer}>
                 <Text style={styles.loginText}>Already have an account? </Text>
                 <TouchableOpacity onPress={() => router.push("/login")}>
@@ -519,32 +537,6 @@ export default function RegisterPatient() {
             </LinearGradient>
           </ScrollView>
         </KeyboardAvoidingView>
-
-        {/* Country Selection Modal */}
-        <Modal visible={showCountryModal} transparent animationType="fade">
-          <View style={styles.modalBackground}>
-            <View style={styles.modalContainer}>
-              <Text style={styles.modalTitle}>Select Country</Text>
-              {COUNTRIES.map((country) => (
-                <Pressable
-                  key={country.callingCode}
-                  style={styles.modalOption}
-                  onPress={() => {
-                    setSelectedCountry(country)
-                    setShowCountryModal(false)
-                  }}
-                >
-                  <Text style={styles.modalOptionText}>
-                    {country.flag} {country.name} ({country.callingCode})
-                  </Text>
-                </Pressable>
-              ))}
-              <TouchableOpacity onPress={() => setShowCountryModal(false)} style={styles.modalCancel}>
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
       </SafeAreaView>
     </LinearGradient>
   )
@@ -613,7 +605,7 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
     paddingHorizontal: 20,
   },
-  /* Registration Card with blue gradient background */
+  /* Registration Card */
   registerCard: {
     borderRadius: 10,
     padding: 24,
@@ -639,7 +631,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     color: "#fff",
   },
-  /* Logo & Doctor/Patient Asset */
+  /* Logo & Asset */
   logoContainer: {
     alignItems: "center",
     marginBottom: 24,
@@ -685,7 +677,7 @@ const styles = StyleSheet.create({
     borderColor: "#D32F2F",
     backgroundColor: "#FFEBEE",
   },
-  /* Field error text */
+  /* Field Error Text */
   errorText: {
     color: "#D32F2F",
     fontSize: 12,
@@ -703,14 +695,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 4,
   },
-  /* Section Label (e.g., Gender) */
+  /* Section Label (Gender) */
   sectionLabel: {
     fontSize: 16,
     fontWeight: "500",
     color: "#333",
     marginBottom: 8,
   },
-  /* Gender selection */
+  /* Gender Selection */
   genderContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -751,7 +743,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
   },
-  /* Login Link (Already have an account) */
+  /* Login Link */
   loginContainer: {
     flexDirection: "row",
     justifyContent: "center",
@@ -776,7 +768,20 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 10,
   },
-  /* Modal for country selection */
+  /* Country Picker Container (using native Picker) */
+  countryPickerContainer: {
+    marginBottom: 16,
+    borderRadius: 8,
+    overflow: "hidden",
+    backgroundColor: "#000",
+  },
+  countryPicker: {
+    height: 40,
+    color: "#fff",
+    width: "100%",
+    backgroundColor: "#000",
+  },
+  /* Modal Styles (removed if not needed) */
   modalBackground: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.3)",
@@ -832,3 +837,11 @@ const styles = StyleSheet.create({
     marginLeft: 5,
   },
 })
+
+const webStyles = {
+  webInputStyle: {
+    outlineWidth: 0,
+    outlineStyle: "none",
+    outlineColor: "transparent",
+  },
+}
