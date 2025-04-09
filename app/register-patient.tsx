@@ -22,7 +22,6 @@ import {
   type TextInputFocusEventData,
 } from "react-native"
 import { MaterialIcons, Ionicons } from "@expo/vector-icons"
-import { Picker } from "@react-native-picker/picker"
 import { LinearGradient } from "expo-linear-gradient"
 import { router } from "expo-router"
 import * as Yup from "yup"
@@ -80,7 +79,7 @@ const PatientSchema = Yup.object().shape({
 })
 
 // -------------------------
-// FloatingLabelInput Component (for registration)
+// FloatingLabelInput Component
 // -------------------------
 function FloatingLabelInput({
   label,
@@ -117,6 +116,7 @@ function FloatingLabelInput({
     }).start()
   }, [isFocused, value, labelAnim])
 
+  // Label style matching the doctors.tsx UI
   const labelStyle = {
     position: "absolute" as const,
     left: iconName ? 40 : 16,
@@ -203,7 +203,7 @@ export default function RegisterPatient() {
     digit: false,
   })
 
-  // Define a country list and use native Picker for country selection
+  // Country selection (if needed)
   const COUNTRIES = [
     { name: "United States", code: "US", callingCode: "+1", flag: "🇺🇸" },
     { name: "United Kingdom", code: "GB", callingCode: "+44", flag: "🇬🇧" },
@@ -212,6 +212,7 @@ export default function RegisterPatient() {
     { name: "Australia", code: "AU", callingCode: "+61", flag: "🇦🇺" },
   ]
   const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[2])
+  const [showCountryModal, setShowCountryModal] = useState(false)
 
   const [windowDimensions, setWindowDimensions] = useState(Dimensions.get("window"))
   const isWideScreen = windowDimensions.width > 768
@@ -242,7 +243,8 @@ export default function RegisterPatient() {
   const validateField = async (field: keyof PatientFormData, value: string): Promise<boolean> => {
     try {
       if (field === "confirmPassword") {
-        if (value !== formData.password) {
+        // Only check if both password and confirmPassword are non-empty
+        if (formData.password && value && formData.password !== value) {
           setErrors((prev) => ({ ...prev, confirmPassword: "Passwords must match" }))
           return false
         } else {
@@ -298,16 +300,10 @@ export default function RegisterPatient() {
   const handleRegister = async (): Promise<void> => {
     setIsSubmitting(true)
     try {
-      if (formData.password !== formData.confirmPassword) {
-        setErrors((prev) => ({ ...prev, confirmPassword: "Passwords must match" }))
-        setIsSubmitting(false)
-        return
-      }
+      // Remove explicit check for password mismatch; Yup validation will catch it.
       await PatientSchema.validate(formData, { abortEarly: false })
       console.log("Registering patient with:", formData)
-      // Combine selected country's calling code with phone number:
-      const finalPhone = `${selectedCountry.callingCode} ${formData.phoneNumber}`
-      const res = await createPatient({ ...formData, phoneNumber: finalPhone })
+      const res = await createPatient(formData)
       if (res.success) {
         showToast("success", "Registration successful")
         router.push("/login")
@@ -332,7 +328,12 @@ export default function RegisterPatient() {
     }
   }
 
-  // Gender selection
+  const handleSelectCountry = (country: typeof COUNTRIES[0]) => {
+    setSelectedCountry(country)
+    setShowCountryModal(false)
+  }
+
+  // Gender selection options
   const GENDER_OPTIONS = [
     { label: "Male", value: "male" },
     { label: "Female", value: "female" },
@@ -421,6 +422,7 @@ export default function RegisterPatient() {
               />
               {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
 
+              {/* Password Checks UI */}
               <View style={styles.passwordChecksContainer}>
                 <PasswordCheckItem label="Min. 8 characters" isValid={passwordChecks.length} />
                 <PasswordCheckItem label="At least one lowercase letter" isValid={passwordChecks.lower} />
@@ -441,28 +443,6 @@ export default function RegisterPatient() {
                 onBlur={handleBlur("confirmPassword")}
               />
               {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
-
-              {/* Country Picker for phone number selection */}
-              <View style={styles.countryPickerContainer}>
-                <Picker
-                  selectedValue={selectedCountry.callingCode}
-                  style={styles.countryPicker}
-                  onValueChange={(itemValue) => {
-                    const selected = COUNTRIES.find(c => c.callingCode === itemValue)
-                    if (selected) setSelectedCountry(selected)
-                  }}
-                  mode="dropdown"
-                  dropdownIconColor="#fff"
-                >
-                  {COUNTRIES.map(country => (
-                    <Picker.Item
-                      key={country.callingCode}
-                      label={`${country.flag} ${country.name} (${country.callingCode})`}
-                      value={country.callingCode}
-                    />
-                  ))}
-                </Picker>
-              </View>
 
               <FloatingLabelInput
                 label="Phone Number"
@@ -527,7 +507,7 @@ export default function RegisterPatient() {
                 <Text style={styles.alternateLinkText}>Not a Patient? Register as Doctor</Text>
               </TouchableOpacity>
 
-              {/* Already have an account? Login */}
+              {/* Already have an account? */}
               <View style={styles.loginContainer}>
                 <Text style={styles.loginText}>Already have an account? </Text>
                 <TouchableOpacity onPress={() => router.push("/login")}>
@@ -537,13 +517,36 @@ export default function RegisterPatient() {
             </LinearGradient>
           </ScrollView>
         </KeyboardAvoidingView>
+
+        {/* Country Selection Modal */}
+        <Modal visible={showCountryModal} transparent animationType="fade">
+          <View style={styles.modalBackground}>
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalTitle}>Select Country</Text>
+              {COUNTRIES.map((country) => (
+                <Pressable
+                  key={country.callingCode}
+                  style={styles.modalOption}
+                  onPress={() => handleSelectCountry(country)}
+                >
+                  <Text style={styles.modalOptionText}>
+                    {country.flag} {country.name} ({country.callingCode})
+                  </Text>
+                </Pressable>
+              ))}
+              <TouchableOpacity onPress={() => setShowCountryModal(false)} style={styles.modalCancel}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     </LinearGradient>
   )
 }
 
 // -------------------------
-// Web style overrides for inputs (remove outline)
+// Web style overrides for inputs (remove focus outline)
 // -------------------------
 const webStyles = {
   webInputStyle: {
@@ -605,7 +608,7 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
     paddingHorizontal: 20,
   },
-  /* Registration Card */
+  /* Registration Card with blue gradient background */
   registerCard: {
     borderRadius: 10,
     padding: 24,
@@ -618,20 +621,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 4,
   },
-  screenTitle: {
-    fontSize: 22,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 4,
-    color: "#fff",
-  },
-  subtitleText: {
-    fontSize: 14,
-    textAlign: "center",
-    marginBottom: 16,
-    color: "#fff",
-  },
-  /* Logo & Asset */
+  /* Logo & Header in card */
   logoContainer: {
     alignItems: "center",
     marginBottom: 24,
@@ -650,6 +640,12 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#333",
     marginBottom: 8,
+  },
+  subtitleText: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+    marginBottom: 16,
   },
   /* Floating Label Input */
   floatingContainer: {
@@ -677,7 +673,7 @@ const styles = StyleSheet.create({
     borderColor: "#D32F2F",
     backgroundColor: "#FFEBEE",
   },
-  /* Field Error Text */
+  /* Field error text */
   errorText: {
     color: "#D32F2F",
     fontSize: 12,
@@ -702,7 +698,7 @@ const styles = StyleSheet.create({
     color: "#333",
     marginBottom: 8,
   },
-  /* Gender Selection */
+  /* Gender selection */
   genderContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -743,7 +739,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
   },
-  /* Login Link */
+  webButton: {
+    cursor: "pointer",
+  },
+  /* Login Link (Already have an account) */
   loginContainer: {
     flexDirection: "row",
     justifyContent: "center",
@@ -768,20 +767,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 10,
   },
-  /* Country Picker Container (using native Picker) */
-  countryPickerContainer: {
-    marginBottom: 16,
-    borderRadius: 8,
-    overflow: "hidden",
-    backgroundColor: "#000",
-  },
-  countryPicker: {
-    height: 40,
-    color: "#fff",
-    width: "100%",
-    backgroundColor: "#000",
-  },
-  /* Modal Styles (removed if not needed) */
+  /* Modal for country selection */
   modalBackground: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.3)",
@@ -837,11 +823,3 @@ const styles = StyleSheet.create({
     marginLeft: 5,
   },
 })
-
-const webStyles = {
-  webInputStyle: {
-    outlineWidth: 0,
-    outlineStyle: "none",
-    outlineColor: "transparent",
-  },
-}
