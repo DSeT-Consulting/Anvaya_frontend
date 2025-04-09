@@ -200,18 +200,18 @@ export const createPatient = async (
   patientRegData: PatientRegistrationData,
   options?: { registeredByDoctor?: boolean }
 ): Promise<ApiResponse<any>> => {
-  // When registered by a doctor, use the doctor's token (requiresAuth true)
-  // Otherwise, use requiresAuth false.
+  // Set requiresAuth to true if a doctor is initiating registration; otherwise false.
   const requiresAuth = options?.registeredByDoctor ? true : false;
   const res = await apiRequest<any>('post', '/api/patients', patientRegData, requiresAuth);
   
-  // Only in self-registration, attempt to store a token if provided
+  // For self-registration, store the token if provided.
   if (!options?.registeredByDoctor && res.success && res.data?.token) {
     await setAuthToken(res.data.token);
   }
   
   return res;
 };
+
 
 export const searchPatient = async (id: string): Promise<ApiResponse<any>> => {
   return await apiRequest<any>('get', `/api/patients/search/${id}`, undefined, true);
