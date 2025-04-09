@@ -20,6 +20,7 @@ import {
   Pressable,
 } from "react-native"
 import { MaterialIcons, Ionicons } from "@expo/vector-icons"
+import { LinearGradient } from "expo-linear-gradient"
 import { router } from "expo-router"
 import * as Yup from "yup"
 import { createDoctor } from "@/api"
@@ -36,7 +37,6 @@ const COUNTRIES = [
 
 // ---------- Basic phone auto-format (optional) ----------
 function autoFormatPhoneNumber(input: string): string {
-  // Remove non-digit characters
   const digits = input.replace(/\D/g, "")
   let formatted = digits
   if (digits.length > 0) {
@@ -70,18 +70,9 @@ const DoctorSchema = Yup.object().shape({
   password: Yup.string()
     .required("Password is required")
     .min(8, "Password must be at least 8 characters")
-    .matches(
-      /[a-z]/,
-      "Must contain at least one lowercase letter"
-    )
-    .matches(
-      /[A-Z]/,
-      "Must contain at least one uppercase letter"
-    )
-    .matches(
-      /\d/,
-      "Must contain at least one number"
-    ),
+    .matches(/[a-z]/, "Must contain at least one lowercase letter")
+    .matches(/[A-Z]/, "Must contain at least one uppercase letter")
+    .matches(/\d/, "Must contain at least one number"),
   confirmPassword: Yup.string()
     .required("Please confirm your password")
     .test("passwords-match", "Passwords must match", function (value) {
@@ -89,7 +80,7 @@ const DoctorSchema = Yup.object().shape({
     }),
 })
 
-// ---------- DoctorFormData Interface ----------
+// ---------- Interfaces & Types ----------
 interface DoctorFormData {
   name: string
   email: string
@@ -101,10 +92,8 @@ interface DoctorFormData {
   confirmPassword: string
 }
 
-// ---------- FormErrors Type ----------
 type FormErrors = { [key: string]: string | undefined }
 
-// ---------- PasswordCheck Interface ----------
 interface PasswordChecks {
   length: boolean
   lower: boolean
@@ -112,8 +101,8 @@ interface PasswordChecks {
   digit: boolean
 }
 
-// ---------- FloatingLabelInput Component ----------
-function FloatingLabelInput({
+// ---------- Custom FloatingLabelInput Component for Registration ----------
+function FloatingLabelInputReg({
   label,
   iconName,
   value,
@@ -151,7 +140,7 @@ function FloatingLabelInput({
   const labelStyle = {
     position: "absolute" as const,
     left: iconName ? 40 : 16,
-    pointerEvents: "none",
+    pointerEvents: "none" as const,
     top: labelAnim.interpolate({
       inputRange: [0, 1],
       outputRange: [14, -2],
@@ -186,18 +175,14 @@ function FloatingLabelInput({
       />
       {isPasswordToggleEnabled && setShowPassword && (
         <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-          <MaterialIcons
-            name={showPassword ? "visibility-off" : "visibility"}
-            size={22}
-            color="#757575"
-          />
+          <MaterialIcons name={showPassword ? "visibility-off" : "visibility"} size={22} color="#757575" />
         </TouchableOpacity>
       )}
     </View>
   )
 }
 
-// ---------- Main Component ----------
+// ---------- Main RegisterDoctor Component ----------
 export default function RegisterDoctor() {
   const [formData, setFormData] = useState<DoctorFormData>({
     name: "",
@@ -212,12 +197,6 @@ export default function RegisterDoctor() {
   const [errors, setErrors] = useState<FormErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isFormValid, setIsFormValid] = useState(false)
-
-  // Show/hide password toggles
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-
-  // For password checks UI
   const [passwordChecks, setPasswordChecks] = useState<PasswordChecks>({
     length: false,
     lower: false,
@@ -225,13 +204,16 @@ export default function RegisterDoctor() {
     digit: false,
   })
 
-  // For phone country code
-  const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[0])
+  // For phone country code (default to India)
+  const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[2])
   const [showCountryModal, setShowCountryModal] = useState(false)
 
-  // For responsive layout
   const [windowDimensions, setWindowDimensions] = useState(Dimensions.get("window"))
   const isWideScreen = windowDimensions.width > 768
+
+  // Toggle for password visibility for confirm password
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener("change", ({ window }) => {
@@ -240,24 +222,9 @@ export default function RegisterDoctor() {
     return () => subscription?.remove()
   }, [])
 
-  // Re-validate entire form on changes
   useEffect(() => {
-    if (formData.confirmPassword && formData.password !== formData.confirmPassword) {
-      setErrors((prev) => ({ ...prev, confirmPassword: "Passwords must match" }))
-    } else if (formData.confirmPassword) {
-      setErrors((prev) => ({ ...prev, confirmPassword: undefined }))
-    }
     validateForm()
   }, [formData])
-
-  // Check if the password meets each requirement
-  const checkPasswordRequirements = (pass: string) => {
-    const length = pass.length >= 8
-    const lower = /[a-z]/.test(pass)
-    const upper = /[A-Z]/.test(pass)
-    const digit = /\d/.test(pass)
-    setPasswordChecks({ length, lower, upper, digit })
-  }
 
   const validateForm = async () => {
     try {
@@ -272,7 +239,6 @@ export default function RegisterDoctor() {
 
   const validateField = async (field: keyof DoctorFormData, value: string) => {
     try {
-      // If confirmPassword is typed
       if (field === "confirmPassword") {
         if (value !== formData.password) {
           setErrors((prev) => ({ ...prev, confirmPassword: "Passwords must match" }))
@@ -281,15 +247,9 @@ export default function RegisterDoctor() {
           setErrors((prev) => ({ ...prev, confirmPassword: undefined }))
         }
       }
-
-      const fieldSchema = Yup.object().shape({
-        [field]: DoctorSchema.fields[field],
-      })
+      const fieldSchema = Yup.object().shape({ [field]: DoctorSchema.fields[field] })
       await fieldSchema.validate({ [field]: value }, { abortEarly: false })
-
       setErrors((prev) => ({ ...prev, [field]: undefined }))
-
-      // If password changed, re-check confirmPassword
       if (field === "password" && formData.confirmPassword) {
         if (value !== formData.confirmPassword) {
           setErrors((prev) => ({ ...prev, confirmPassword: "Passwords must match" }))
@@ -311,21 +271,26 @@ export default function RegisterDoctor() {
 
   const handleInputChange = (field: keyof DoctorFormData, rawValue: string) => {
     let value = rawValue
-    // If editing phoneNumber, optionally auto-format
     if (field === "phoneNumber") {
       value = autoFormatPhoneNumber(rawValue)
     }
-    // If password is typed, check requirements
     if (field === "password") {
       checkPasswordRequirements(value)
     }
-
     setFormData((prev) => ({ ...prev, [field]: value }))
     validateField(field, value)
   }
 
   const handleBlur = (field: keyof DoctorFormData) => () => {
     validateField(field, formData[field])
+  }
+
+  const checkPasswordRequirements = (pass: string) => {
+    const length = pass.length >= 8
+    const lower = /[a-z]/.test(pass)
+    const upper = /[A-Z]/.test(pass)
+    const digit = /\d/.test(pass)
+    setPasswordChecks({ length, lower, upper, digit })
   }
 
   const handleRegister = async () => {
@@ -336,12 +301,8 @@ export default function RegisterDoctor() {
         setIsSubmitting(false)
         return
       }
-
       await DoctorSchema.validate(formData, { abortEarly: false })
-      // Combine selected country calling code with phone number
       const finalPhone = `${selectedCountry.callingCode} ${formData.phoneNumber}`
-
-      console.log("Registering doctor with:", { ...formData, phoneNumber: finalPhone })
       const res = await createDoctor({ ...formData, phoneNumber: finalPhone })
       if (res.success) {
         showToast("success", "Registration successful")
@@ -367,56 +328,57 @@ export default function RegisterDoctor() {
     }
   }
 
-  // Country code modal selection handler
   const handleSelectCountry = (country: typeof COUNTRIES[0]) => {
     setSelectedCountry(country)
     setShowCountryModal(false)
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLogoContainer}>
-          <Image
-            source={require("../assets/images/icon.jpeg")}
-            style={styles.headerLogo}
-            resizeMode="contain"
-          />
+    <LinearGradient
+      colors={["#03045E", "#0077B6", "#00B4D8", "#90E0EF"]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.gradientContainer}
+    >
+      <SafeAreaView style={{ flex: 1 }}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerLogoContainer}>
+            <Image
+              source={require("../assets/images/icon.jpeg")}
+              style={styles.headerLogo}
+              resizeMode="contain"
+            />
+          </View>
+          <Text style={styles.headerTitle}>Anavya</Text>
+          <TouchableOpacity style={styles.infoIconContainer} onPress={() => router.push("/info")}>
+            <MaterialIcons name="info-outline" size={24} color="#000" />
+          </TouchableOpacity>
         </View>
-        <Text style={styles.headerTitle}>Anvaya</Text>
-        <TouchableOpacity style={styles.infoIconContainer} onPress={() => router.push("/info")}>
-          <MaterialIcons name="info-outline" size={24} color="#000" />
-        </TouchableOpacity>
-      </View>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.content}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.content}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
         >
-          <View
-            style={[
-              styles.registerCard,
-              isWideScreen ? { width: 500, maxWidth: "90%" } : { width: "100%" },
-            ]}
-          >
-            {/* Title / Logo */}
-            <View style={styles.logoContainer}>
-              <View style={styles.logoCircle}>
-                <MaterialIcons name="medical-services" size={40} color="#4B0082" />
+          <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <LinearGradient
+              colors={["#03045E", "#0077B6", "#00B4D8", "#90E0EF"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.registerCard}
+            >
+              {/* Logo & Title */}
+              <View style={styles.logoContainer}>
+                <View style={styles.logoCircle}>
+                  <MaterialIcons name="medical-services" size={40} color="#4B0082" />
+                </View>
+                <Text style={styles.welcomeText}>Doctor Registration</Text>
+                <Text style={styles.subtitleText}>Create your doctor account</Text>
               </View>
-              <Text style={styles.welcomeText}>Doctor Registration</Text>
-              <Text style={styles.subtitleText}>Create your doctor account</Text>
-            </View>
 
-            <View style={styles.inputContainer}>
-              {/* Name */}
-              <FloatingLabelInput
+              {/* Form Fields */}
+              <FloatingLabelInputReg
                 label="Name"
                 iconName="person"
                 value={formData.name}
@@ -426,8 +388,7 @@ export default function RegisterDoctor() {
               />
               {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
 
-              {/* Email */}
-              <FloatingLabelInput
+              <FloatingLabelInputReg
                 label="Email"
                 iconName="email"
                 value={formData.email}
@@ -437,8 +398,7 @@ export default function RegisterDoctor() {
               />
               {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
 
-              {/* Doctor's ID */}
-              <FloatingLabelInput
+              <FloatingLabelInputReg
                 label="Doctor's ID"
                 iconName="badge"
                 value={formData.doctorId}
@@ -448,8 +408,7 @@ export default function RegisterDoctor() {
               />
               {errors.doctorId && <Text style={styles.errorText}>{errors.doctorId}</Text>}
 
-              {/* Specialty */}
-              <FloatingLabelInput
+              <FloatingLabelInputReg
                 label="Field of Expertise / Specialty"
                 iconName="school"
                 value={formData.specialty}
@@ -459,8 +418,7 @@ export default function RegisterDoctor() {
               />
               {errors.specialty && <Text style={styles.errorText}>{errors.specialty}</Text>}
 
-              {/* Affiliated Hospital */}
-              <FloatingLabelInput
+              <FloatingLabelInputReg
                 label="Affiliated Hospital"
                 iconName="local-hospital"
                 value={formData.affiliatedHospital}
@@ -468,17 +426,12 @@ export default function RegisterDoctor() {
                 error={errors.affiliatedHospital}
                 onBlur={handleBlur("affiliatedHospital")}
               />
-              {errors.affiliatedHospital && (
-                <Text style={styles.errorText}>{errors.affiliatedHospital}</Text>
-              )}
+              {errors.affiliatedHospital && <Text style={styles.errorText}>{errors.affiliatedHospital}</Text>}
 
-              {/* Country code + phone number */}
+              {/* Country Code & Phone Number */}
               <View style={[styles.inputWrapper, errors.phoneNumber && styles.inputError]}>
                 <MaterialIcons name="phone" size={20} color="#4B0082" style={styles.inputIcon} />
-                <TouchableOpacity
-                  style={styles.countryCodeSelector}
-                  onPress={() => setShowCountryModal(true)}
-                >
+                <TouchableOpacity style={styles.countryCodeSelector} onPress={() => setShowCountryModal(true)}>
                   <Text style={styles.countryCodeText}>
                     {selectedCountry.flag} {selectedCountry.callingCode}
                   </Text>
@@ -496,8 +449,7 @@ export default function RegisterDoctor() {
               </View>
               {errors.phoneNumber && <Text style={styles.errorText}>{errors.phoneNumber}</Text>}
 
-              {/* Password */}
-              <FloatingLabelInput
+              <FloatingLabelInputReg
                 label="Password"
                 iconName="lock"
                 value={formData.password}
@@ -512,28 +464,14 @@ export default function RegisterDoctor() {
               {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
 
               {/* Password Checks UI */}
-              {/* Shown as bullet points with check/cross icons (or just check vs. neutral) */}
               <View style={styles.passwordChecksContainer}>
-                <PasswordCheckItem
-                  label="Min. 8 characters"
-                  isValid={passwordChecks.length}
-                />
-                <PasswordCheckItem
-                  label="Min. one lowercase character"
-                  isValid={passwordChecks.lower}
-                />
-                <PasswordCheckItem
-                  label="Min. one uppercase character"
-                  isValid={passwordChecks.upper}
-                />
-                <PasswordCheckItem
-                  label="Min. one number"
-                  isValid={passwordChecks.digit}
-                />
+                <PasswordCheckItem label="Min. 8 characters" isValid={passwordChecks.length} />
+                <PasswordCheckItem label="Min. one lowercase character" isValid={passwordChecks.lower} />
+                <PasswordCheckItem label="Min. one uppercase character" isValid={passwordChecks.upper} />
+                <PasswordCheckItem label="Min. one number" isValid={passwordChecks.digit} />
               </View>
 
-              {/* Confirm Password */}
-              <FloatingLabelInput
+              <FloatingLabelInputReg
                 label="Confirm Password"
                 iconName="lock"
                 value={formData.confirmPassword}
@@ -545,16 +483,11 @@ export default function RegisterDoctor() {
                 error={errors.confirmPassword}
                 onBlur={handleBlur("confirmPassword")}
               />
-              {errors.confirmPassword && (
-                <Text style={styles.errorText}>{errors.confirmPassword}</Text>
-              )}
+              {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
 
-              {/* Register button */}
+              {/* Register Button */}
               <TouchableOpacity
-                style={[
-                  styles.roundedButton,
-                  (isSubmitting || !isFormValid) && styles.disabledButton,
-                ]}
+                style={[styles.roundedButton, (isSubmitting || !isFormValid) && styles.disabledButton]}
                 onPress={handleRegister}
                 disabled={isSubmitting || !isFormValid}
               >
@@ -563,6 +496,14 @@ export default function RegisterDoctor() {
                 ) : (
                   <Text style={styles.roundedButtonText}>Register</Text>
                 )}
+              </TouchableOpacity>
+
+              {/* Extra Registration Link */}
+              <TouchableOpacity
+                onPress={() => router.push("/register-patient")}
+                style={{ marginTop: 10 }}
+              >
+                <Text style={styles.alternateLinkText}>Not a Doctor? Register as Patient</Text>
               </TouchableOpacity>
 
               {/* Already have an account? */}
@@ -577,41 +518,39 @@ export default function RegisterDoctor() {
                 <MaterialIcons name="person" size={18} color="#fff" style={styles.buttonIcon} />
                 <Text style={styles.signupButtonText}>Login</Text>
               </TouchableOpacity>
+            </LinearGradient>
+          </ScrollView>
+        </KeyboardAvoidingView>
+
+        {/* Country selection modal */}
+        <Modal visible={showCountryModal} transparent animationType="fade">
+          <View style={styles.modalBackground}>
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalTitle}>Select Country</Text>
+              {COUNTRIES.map((country) => (
+                <Pressable
+                  key={country.callingCode}
+                  style={styles.modalOption}
+                  onPress={() => handleSelectCountry(country)}
+                >
+                  <Text style={styles.modalOptionText}>
+                    {country.flag} {country.name} ({country.callingCode})
+                  </Text>
+                </Pressable>
+              ))}
+              <TouchableOpacity onPress={() => setShowCountryModal(false)} style={styles.modalCancel}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
             </View>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-
-      {/* Country selection modal */}
-      <Modal visible={showCountryModal} transparent animationType="fade">
-        <View style={styles.modalBackground}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Select Country</Text>
-            {COUNTRIES.map((country) => (
-              <Pressable
-                key={country.callingCode}
-                style={styles.modalOption}
-                onPress={() => handleSelectCountry(country)}
-              >
-                <Text style={styles.modalOptionText}>
-                  {country.flag} {country.name} ({country.callingCode})
-                </Text>
-              </Pressable>
-            ))}
-            <TouchableOpacity onPress={() => setShowCountryModal(false)} style={styles.modalCancel}>
-              <Text style={styles.modalCancelText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-    </SafeAreaView>
+        </Modal>
+      </SafeAreaView>
+    </LinearGradient>
   )
 }
 
 /** 
- * A small sub-component for each password check row:
- * - label: text to display (e.g. "Min. 8 characters")
- * - isValid: whether the requirement is met
+ * A sub-component for password check row
  */
 function PasswordCheckItem({ label, isValid }: { label: string; isValid: boolean }) {
   return (
@@ -626,24 +565,15 @@ function PasswordCheckItem({ label, isValid }: { label: string; isValid: boolean
   )
 }
 
-// ---------- Styles ----------
+//////////////////////
+// Styles
+//////////////////////
 const styles = StyleSheet.create({
-  // Remove black focus outline on web
-  floatingInput: {
+  gradientContainer: {
     flex: 1,
-    fontSize: 16,
-    color: "#333",
-    padding: 0,
-    outlineStyle: "none",
-    outlineWidth: 0,
   },
-
-  container: {
-    flex: 1,
-    backgroundColor: "#f5f5f5",
-  },
-
-  // Header
+  /* Language Dropdown – removed language logic */
+  /* Header */
   header: {
     backgroundColor: "#fff",
     padding: 16,
@@ -677,29 +607,44 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
   },
-
-  // Content
+  /* Content Layout */
   content: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    alignItems: "center",
-    padding: 20,
     justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 40,
+    paddingHorizontal: 20,
   },
+  /* Registration Card with gradient */
   registerCard: {
-    backgroundColor: "#fff",
-    borderRadius: 8,
+    borderRadius: 10,
     padding: 24,
+    alignSelf: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 4,
+    width: "90%",
+    maxWidth: 400,
   },
-
-  // Card header
+  screenTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 4,
+    color: "#fff",
+  },
+  subtitleText: {
+    fontSize: 14,
+    textAlign: "center",
+    marginBottom: 16,
+    color: "#fff",
+  },
+  /* Logo & Doctor Asset */
   logoContainer: {
     alignItems: "center",
     marginBottom: 30,
@@ -719,12 +664,7 @@ const styles = StyleSheet.create({
     color: "#333",
     marginBottom: 8,
   },
-  subtitleText: {
-    fontSize: 14,
-    color: "#666",
-  },
-
-  // Floating label container
+  /* Floating Label Input for Registration */
   floatingContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -743,8 +683,15 @@ const styles = StyleSheet.create({
     borderColor: "#D32F2F",
     backgroundColor: "#FFEBEE",
   },
-
-  // For phone
+  floatingInput: {
+    flex: 1,
+    fontSize: 16,
+    color: "#333",
+    padding: 0,
+    outlineStyle: "none",
+    outlineWidth: 0,
+  },
+  /* Phone Input wrapper */
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
@@ -754,17 +701,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
   },
-  inputIcon: {
-    marginRight: 12,
-  },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    color: "#333",
-    padding: 0,
-  },
-
-  // Country code
   countryCodeSelector: {
     flexDirection: "row",
     alignItems: "center",
@@ -775,8 +711,13 @@ const styles = StyleSheet.create({
     color: "#333",
     marginRight: 2,
   },
-
-  // Buttons
+  input: {
+    flex: 1,
+    fontSize: 16,
+    color: "#333",
+    padding: 0,
+  },
+  /* Rounded Button */
   roundedButton: {
     backgroundColor: "#4B0082",
     borderRadius: 30,
@@ -789,12 +730,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
   },
-  disabledButton: {
-    backgroundColor: "#BDBDBD",
-    opacity: 0.7,
-  },
-
-  // Sign up
+  /* Signup & Alternate Links */
   signupContainer: {
     alignItems: "center",
     marginBottom: 10,
@@ -819,27 +755,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "bold",
   },
-
-  // Error text
+  alternateLinkText: {
+    fontSize: 14,
+    color: "#fff",
+    textDecorationLine: "underline",
+    fontWeight: "600",
+    textAlign: "center",
+  },
   errorText: {
     color: "#D32F2F",
     fontSize: 12,
     marginTop: -10,
     marginBottom: 6,
   },
-
-  // Password checks container
   passwordChecksContainer: {
     marginBottom: 16,
     paddingLeft: 10,
   },
   passwordCheckRow: {
+    color: "black",
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 4,
   },
-
-  // Modal
+  /* Modal for country selection */
   modalBackground: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.3)",
@@ -871,5 +810,27 @@ const styles = StyleSheet.create({
   modalCancelText: {
     fontSize: 14,
     color: "#007BFF",
+  },
+  /* Footer */
+  footer: {
+    backgroundColor: "transparent",
+    padding: 12,
+  },
+  footerLinks: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    flexWrap: "wrap",
+  },
+  footerLink: {
+    fontSize: 14,
+    color: "#fff",
+    marginHorizontal: 5,
+  },
+  footerLogo: {
+    width: 60,
+    height: 20,
+    opacity: 0.8,
+    marginLeft: 5,
   },
 })
