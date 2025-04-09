@@ -13,15 +13,16 @@ import {
   ScrollView,
   Dimensions,
   ActivityIndicator,
-  type NativeSyntheticEvent,
-  type TextInputFocusEventData,
   Image,
   Animated,
   Easing,
   Modal,
   Pressable,
+  type NativeSyntheticEvent,
+  type TextInputFocusEventData,
 } from "react-native"
 import { MaterialIcons, Ionicons } from "@expo/vector-icons"
+import { LinearGradient } from "expo-linear-gradient"
 import { router } from "expo-router"
 import * as Yup from "yup"
 import { createPatient } from "@/api"
@@ -78,16 +79,6 @@ const PatientSchema = Yup.object().shape({
 })
 
 // -------------------------
-// Define PasswordChecks interface for UI
-// -------------------------
-interface PasswordChecks {
-  length: boolean
-  lower: boolean
-  upper: boolean
-  digit: boolean
-}
-
-// -------------------------
 // FloatingLabelInput Component
 // -------------------------
 function FloatingLabelInput({
@@ -125,21 +116,20 @@ function FloatingLabelInput({
     }).start()
   }, [isFocused, value, labelAnim])
 
-  // Match the label position/colors used in doctors.tsx
+  // Label style matching the doctors.tsx UI
   const labelStyle = {
     position: "absolute" as const,
     left: iconName ? 40 : 16,
-    pointerEvents: "none",
+    pointerEvents: "none" as const,
     top: labelAnim.interpolate({
       inputRange: [0, 1],
-      outputRange: [14, -2], // same offsets as doctors.tsx
+      outputRange: [14, -2],
     }),
     fontSize: labelAnim.interpolate({
       inputRange: [0, 1],
       outputRange: [16, 12],
     }),
     color: labelAnim.interpolate({
-      // transitions from gray to #4B0082 to match doctors.tsx
       inputRange: [0, 1],
       outputRange: ["#9e9e9e", "#4B0082"],
     }),
@@ -189,7 +179,7 @@ function PasswordCheckItem({ label, isValid }: { label: string; isValid: boolean
 }
 
 // -------------------------
-// Main Component: RegisterPatient
+// Main RegisterPatient Component
 // -------------------------
 export default function RegisterPatient() {
   const [formData, setFormData] = useState<PatientFormData>({
@@ -206,17 +196,13 @@ export default function RegisterPatient() {
   const [isFormValid, setIsFormValid] = useState<boolean>(false)
   const [showPassword, setShowPassword] = useState<boolean>(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false)
-  const [windowDimensions, setWindowDimensions] = useState(Dimensions.get("window"))
-
-  // For password structure UI
   const [passwordChecks, setPasswordChecks] = useState<PasswordChecks>({
     length: false,
     lower: false,
     upper: false,
     digit: false,
   })
-
-  // Example country list (if needed)
+  // Country selection (if needed)
   const COUNTRIES = [
     { name: "United States", code: "US", callingCode: "+1", flag: "🇺🇸" },
     { name: "United Kingdom", code: "GB", callingCode: "+44", flag: "🇬🇧" },
@@ -224,10 +210,10 @@ export default function RegisterPatient() {
     { name: "Japan", code: "JP", callingCode: "+81", flag: "🇯🇵" },
     { name: "Australia", code: "AU", callingCode: "+61", flag: "🇦🇺" },
   ]
-
-  const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[0])
+  const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[2])
   const [showCountryModal, setShowCountryModal] = useState(false)
 
+  const [windowDimensions, setWindowDimensions] = useState(Dimensions.get("window"))
   const isWideScreen = windowDimensions.width > 768
   const isWeb = Platform.OS === "web"
 
@@ -238,17 +224,10 @@ export default function RegisterPatient() {
     return () => subscription?.remove()
   }, [])
 
-  // Check for password mismatch
   useEffect(() => {
-    if (formData.confirmPassword && formData.password !== formData.confirmPassword) {
-      setErrors((prev) => ({ ...prev, confirmPassword: "Passwords must match" }))
-    } else if (formData.confirmPassword) {
-      setErrors((prev) => ({ ...prev, confirmPassword: undefined }))
-    }
     validateForm()
   }, [formData])
 
-  // Validate entire form
   const validateForm = async (): Promise<void> => {
     try {
       await PatientSchema.validate(formData, { abortEarly: false })
@@ -260,10 +239,8 @@ export default function RegisterPatient() {
     }
   }
 
-  // Validate single field
   const validateField = async (field: keyof PatientFormData, value: string): Promise<boolean> => {
     try {
-      // If confirmPassword changed
       if (field === "confirmPassword") {
         if (value !== formData.password) {
           setErrors((prev) => ({ ...prev, confirmPassword: "Passwords must match" }))
@@ -272,14 +249,11 @@ export default function RegisterPatient() {
           setErrors((prev) => ({ ...prev, confirmPassword: undefined }))
         }
       }
-      // Validate with Yup
       const fieldSchema = Yup.object().shape({
         [field]: PatientSchema.fields[field],
       })
       await fieldSchema.validate({ [field]: value }, { abortEarly: false })
       setErrors((prev) => ({ ...prev, [field]: undefined }))
-
-      // If password changed, re-check confirmPassword
       if (field === "password" && formData.confirmPassword) {
         if (value !== formData.confirmPassword) {
           setErrors((prev) => ({ ...prev, confirmPassword: "Passwords must match" }))
@@ -301,23 +275,18 @@ export default function RegisterPatient() {
     }
   }
 
-  // Handle input changes
   const handleInputChange = (field: keyof PatientFormData, value: string): void => {
     setFormData((prev) => ({ ...prev, [field]: value }))
     validateField(field, value)
-    // Check password structure if user is typing password
     if (field === "password") {
       checkPasswordRequirements(value)
     }
   }
 
-  const handleBlur =
-    (field: keyof PatientFormData) =>
-    (e: NativeSyntheticEvent<TextInputFocusEventData>): void => {
-      validateField(field, formData[field])
-    }
+  const handleBlur = (field: keyof PatientFormData) => (e: NativeSyntheticEvent<TextInputFocusEventData>): void => {
+    validateField(field, formData[field])
+  }
 
-  // Check password requirements
   const checkPasswordRequirements = (pass: string) => {
     const length = pass.length >= 8
     const lower = /[a-z]/.test(pass)
@@ -326,7 +295,6 @@ export default function RegisterPatient() {
     setPasswordChecks({ length, lower, upper, digit })
   }
 
-  // Registration
   const handleRegister = async (): Promise<void> => {
     setIsSubmitting(true)
     try {
@@ -335,7 +303,6 @@ export default function RegisterPatient() {
         setIsSubmitting(false)
         return
       }
-
       await PatientSchema.validate(formData, { abortEarly: false })
       console.log("Registering patient with:", formData)
       const res = await createPatient(formData)
@@ -363,56 +330,66 @@ export default function RegisterPatient() {
     }
   }
 
-  // Gender selection
+  const handleSelectCountry = (country: typeof COUNTRIES[0]) => {
+    setSelectedCountry(country)
+    setShowCountryModal(false)
+  }
+
+  // For gender selection – using a simple array of options
+  const GENDER_OPTIONS = [
+    { label: "Male", value: "male" },
+    { label: "Female", value: "female" },
+    { label: "Other", value: "other" },
+  ]
   const selectGender = (gender: string) => {
     handleInputChange("gender", gender)
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header - matched with doctors.tsx (white background, black text, info on right) */}
-      <View style={styles.header}>
-        <View style={styles.headerLogoContainer}>
-          <Image
-            source={require("../assets/images/icon.jpeg")}
-            style={styles.headerLogo}
-            resizeMode="contain"
-          />
+    <LinearGradient
+      colors={["#03045E", "#0077B6", "#00B4D8", "#90E0EF"]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.gradientContainer}
+    >
+      <SafeAreaView style={{ flex: 1 }}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerLogoContainer}>
+            <Image
+              source={require("../assets/images/icon.jpeg")}
+              style={styles.headerLogo}
+              resizeMode="contain"
+            />
+          </View>
+          <Text style={styles.headerTitle}>Anavya</Text>
+          <TouchableOpacity style={styles.infoIconContainer} onPress={() => router.push("/info")}>
+            <MaterialIcons name="info-outline" size={24} color="#000" />
+          </TouchableOpacity>
         </View>
-        <Text style={styles.headerTitle}>Anvaya</Text>
-        <TouchableOpacity
-          style={styles.infoIconContainer}
-          onPress={() => router.push("/info")}
-        >
-          <MaterialIcons name="info-outline" size={24} color="#000" />
-        </TouchableOpacity>
-      </View>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.content}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.content}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
         >
-          <View
-            style={[
-              styles.registerCard,
-              isWideScreen ? { width: 500, maxWidth: "90%" } : { width: "100%" },
-            ]}
-          >
-            <View style={styles.logoContainer}>
-              <View style={styles.logoCircle}>
-                <MaterialIcons name="person" size={40} color="#4B0082" />
+          <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <LinearGradient
+              colors={["#03045E", "#0077B6", "#00B4D8", "#90E0EF"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.registerCard}
+            >
+              {/* Header Logo & Title */}
+              <View style={styles.logoContainer}>
+                <View style={styles.logoCircle}>
+                  <MaterialIcons name="person" size={40} color="#4B0082" />
+                </View>
+                <Text style={styles.welcomeText}>Patient Registration</Text>
+                <Text style={styles.subtitleText}>Create your patient account</Text>
               </View>
-              <Text style={styles.welcomeText}>Patient Registration</Text>
-              <Text style={styles.subtitleText}>Create your patient account</Text>
-            </View>
 
-            <View style={styles.inputContainer}>
-              {/* Name */}
+              {/* Form Fields */}
               <FloatingLabelInput
                 label="Full Name"
                 iconName="person"
@@ -423,7 +400,6 @@ export default function RegisterPatient() {
               />
               {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
 
-              {/* Email */}
               <FloatingLabelInput
                 label="Email"
                 iconName="email"
@@ -434,7 +410,6 @@ export default function RegisterPatient() {
               />
               {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
 
-              {/* Password */}
               <FloatingLabelInput
                 label="Password"
                 iconName="lock"
@@ -449,27 +424,14 @@ export default function RegisterPatient() {
               />
               {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
 
-              {/* Password structure checks */}
+              {/* Optional Password Checks UI */}
               <View style={styles.passwordChecksContainer}>
-                <PasswordCheckItem
-                  label="Min. 8 characters"
-                  isValid={passwordChecks.length}
-                />
-                <PasswordCheckItem
-                  label="At least one lowercase letter"
-                  isValid={passwordChecks.lower}
-                />
-                <PasswordCheckItem
-                  label="At least one uppercase letter"
-                  isValid={passwordChecks.upper}
-                />
-                <PasswordCheckItem
-                  label="At least one number"
-                  isValid={passwordChecks.digit}
-                />
+                <PasswordCheckItem label="Min. 8 characters" isValid={passwordChecks.length} />
+                <PasswordCheckItem label="At least one lowercase letter" isValid={passwordChecks.lower} />
+                <PasswordCheckItem label="At least one uppercase letter" isValid={passwordChecks.upper} />
+                <PasswordCheckItem label="At least one number" isValid={passwordChecks.digit} />
               </View>
 
-              {/* Confirm Password */}
               <FloatingLabelInput
                 label="Confirm Password"
                 iconName="lock"
@@ -482,11 +444,8 @@ export default function RegisterPatient() {
                 error={errors.confirmPassword}
                 onBlur={handleBlur("confirmPassword")}
               />
-              {errors.confirmPassword && (
-                <Text style={styles.errorText}>{errors.confirmPassword}</Text>
-              )}
+              {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
 
-              {/* Phone Number */}
               <FloatingLabelInput
                 label="Phone Number"
                 iconName="phone"
@@ -497,7 +456,6 @@ export default function RegisterPatient() {
               />
               {errors.phoneNumber && <Text style={styles.errorText}>{errors.phoneNumber}</Text>}
 
-              {/* Age */}
               <FloatingLabelInput
                 label="Age"
                 iconName="calendar-today"
@@ -508,7 +466,7 @@ export default function RegisterPatient() {
               />
               {errors.age && <Text style={styles.errorText}>{errors.age}</Text>}
 
-              {/* Gender */}
+              {/* Gender Selection */}
               <Text style={styles.sectionLabel}>Gender</Text>
               <View style={styles.genderContainer}>
                 {GENDER_OPTIONS.map((option) => (
@@ -535,19 +493,20 @@ export default function RegisterPatient() {
 
               {/* Register Button */}
               <TouchableOpacity
-                style={[
-                  styles.registerButton,
-                  isWeb && styles.webButton,
-                  (!isFormValid || isSubmitting) && styles.disabledButton,
-                ]}
+                style={[styles.registerButton, (!isFormValid || isSubmitting) && styles.disabledButton]}
                 onPress={handleRegister}
                 disabled={!isFormValid || isSubmitting}
               >
                 {isSubmitting ? (
-                  <ActivityIndicator color="#fff" size="small" />
+                  <ActivityIndicator size="small" color="#fff" />
                 ) : (
                   <Text style={styles.registerButtonText}>Register</Text>
                 )}
+              </TouchableOpacity>
+
+              {/* Extra Link: Not a Patient? Register as Doctor */}
+              <TouchableOpacity onPress={() => router.push("/register-doctor")} style={{ marginTop: 10 }}>
+                <Text style={styles.alternateLinkText}>Not a Patient? Register as Doctor</Text>
               </TouchableOpacity>
 
               {/* Already have an account? */}
@@ -557,66 +516,59 @@ export default function RegisterPatient() {
                   <Text style={styles.loginLink}>Login</Text>
                 </TouchableOpacity>
               </View>
+            </LinearGradient>
+          </ScrollView>
+        </KeyboardAvoidingView>
+
+        {/* Country Selection Modal */}
+        <Modal visible={showCountryModal} transparent animationType="fade">
+          <View style={styles.modalBackground}>
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalTitle}>Select Country</Text>
+              {COUNTRIES.map((country) => (
+                <Pressable
+                  key={country.callingCode}
+                  style={styles.modalOption}
+                  onPress={() => {
+                    setSelectedCountry(country)
+                    setShowCountryModal(false)
+                  }}
+                >
+                  <Text style={styles.modalOptionText}>
+                    {country.flag} {country.name} ({country.callingCode})
+                  </Text>
+                </Pressable>
+              ))}
+              <TouchableOpacity onPress={() => setShowCountryModal(false)} style={styles.modalCancel}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
             </View>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-
-      {/* Custom Country Code Modal (optional) */}
-      <Modal visible={showCountryModal} transparent animationType="fade">
-        <View style={styles.modalBackground}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Select Country</Text>
-            {COUNTRIES.map((country) => (
-              <Pressable
-                key={country.callingCode}
-                style={styles.modalOption}
-                onPress={() => {
-                  setSelectedCountry(country)
-                  setShowCountryModal(false)
-                }}
-              >
-                <Text style={styles.modalOptionText}>
-                  {country.flag} {country.name} ({country.callingCode})
-                </Text>
-              </Pressable>
-            ))}
-            <TouchableOpacity
-              onPress={() => setShowCountryModal(false)}
-              style={styles.modalCancel}
-            >
-              <Text style={styles.modalCancelText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-    </SafeAreaView>
+        </Modal>
+      </SafeAreaView>
+    </LinearGradient>
   )
 }
 
-// Gender selection array
-const GENDER_OPTIONS = [
-  { label: "Male", value: "male" },
-  { label: "Female", value: "female" },
-  { label: "Other", value: "other" },
-]
-
+// -------------------------
+// Web style overrides for inputs (remove outline)
+// -------------------------
 const webStyles = {
   webInputStyle: {
     outlineWidth: 0,
-    outlineColor: "transparent",
     outlineStyle: "none",
+    outlineColor: "transparent",
   },
 }
 
+// -------------------------
+// Styles
+// -------------------------
 const styles = StyleSheet.create({
-  // Container
-  container: {
+  gradientContainer: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
   },
-
-  // Header: white background, black text, consistent with doctors.tsx
+  /* Header */
   header: {
     backgroundColor: "#fff",
     padding: 16,
@@ -650,8 +602,7 @@ const styles = StyleSheet.create({
     right: 16,
     top: 16,
   },
-
-  // Layout
+  /* Content layout */
   content: {
     flex: 1,
   },
@@ -659,20 +610,36 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+    paddingVertical: 40,
+    paddingHorizontal: 20,
   },
+  /* Registration Card with blue gradient background */
   registerCard: {
-    backgroundColor: "#fff",
-    borderRadius: 8,
+    borderRadius: 10,
     padding: 24,
+    alignSelf: "center",
+    width: "90%",
+    maxWidth: 400,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 4,
   },
-
-  // Intro
+  screenTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 4,
+    color: "#fff",
+  },
+  subtitleText: {
+    fontSize: 14,
+    textAlign: "center",
+    marginBottom: 16,
+    color: "#fff",
+  },
+  /* Logo & Doctor/Patient Asset */
   logoContainer: {
     alignItems: "center",
     marginBottom: 24,
@@ -692,24 +659,15 @@ const styles = StyleSheet.create({
     color: "#333",
     marginBottom: 8,
   },
-  subtitleText: {
-    fontSize: 14,
-    color: "#666",
-  },
-
-  // Input container
-  inputContainer: {
-    width: "100%",
-  },
+  /* Floating Label Input */
   floatingContainer: {
     flexDirection: "row",
     alignItems: "center",
-    position: "relative",
     backgroundColor: "#f5f5f5",
     borderRadius: 8,
-    marginBottom: 16,
     paddingHorizontal: 16,
     paddingVertical: 14,
+    marginBottom: 16,
   },
   floatingIcon: {
     marginRight: 12,
@@ -719,14 +677,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#333",
     padding: 0,
+    outlineStyle: "none",
+    outlineWidth: 0,
   },
   inputError: {
     borderWidth: 1,
     borderColor: "#D32F2F",
     backgroundColor: "#FFEBEE",
   },
-
-  // Field error text
+  /* Field error text */
   errorText: {
     color: "#D32F2F",
     fontSize: 12,
@@ -734,8 +693,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginLeft: 4,
   },
-
-  // Password checks
+  /* Password Checks */
   passwordChecksContainer: {
     marginBottom: 16,
     paddingLeft: 10,
@@ -745,14 +703,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 4,
   },
-
-  // Gender
+  /* Section Label (e.g., Gender) */
   sectionLabel: {
     fontSize: 16,
     fontWeight: "500",
     color: "#333",
     marginBottom: 8,
   },
+  /* Gender selection */
   genderContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -780,8 +738,7 @@ const styles = StyleSheet.create({
     color: "#4B0082",
     fontWeight: "bold",
   },
-
-  // Buttons
+  /* Rounded Register Button */
   registerButton: {
     backgroundColor: "#4B0082",
     borderRadius: 30,
@@ -789,24 +746,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 20,
   },
-  disabledButton: {
-    backgroundColor: "#BDBDBD",
-    opacity: 0.7,
-  },
   registerButtonText: {
     color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
   },
-  webButton: {
-    cursor: "pointer", // for web
-  },
-
-  // Already have an account
+  /* Login Link (Already have an account) */
   loginContainer: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
+    marginTop: 16,
   },
   loginText: {
     fontSize: 14,
@@ -817,8 +767,16 @@ const styles = StyleSheet.create({
     color: "#4B0082",
     fontWeight: "500",
   },
-
-  // Modal
+  /* Alternate Link: Not a Patient? Register as Doctor */
+  alternateLinkText: {
+    fontSize: 14,
+    color: "#fff",
+    textDecorationLine: "underline",
+    fontWeight: "600",
+    textAlign: "center",
+    marginTop: 10,
+  },
+  /* Modal for country selection */
   modalBackground: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.3)",
@@ -850,5 +808,27 @@ const styles = StyleSheet.create({
   modalCancelText: {
     fontSize: 14,
     color: "#007BFF",
+  },
+  /* Footer */
+  footer: {
+    backgroundColor: "transparent",
+    padding: 12,
+  },
+  footerLinks: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    flexWrap: "wrap",
+  },
+  footerLink: {
+    fontSize: 14,
+    color: "#fff",
+    marginHorizontal: 5,
+  },
+  footerLogo: {
+    width: 60,
+    height: 20,
+    opacity: 0.8,
+    marginLeft: 5,
   },
 })
