@@ -296,35 +296,51 @@ export default function RegisterPatient() {
   }
 
 const handleRegister = async (): Promise<void> => {
-  setIsSubmitting(true)
+  setIsSubmitting(true);
   try {
-    await PatientSchema.validate(formData, { abortEarly: false })
-    console.log("Registering patient with:", formData)
-    const res = await createPatient(formData)
+    await PatientSchema.validate(formData, { abortEarly: false });
+    console.log("Registering patient with:", formData);
+    
+    // Call createPatient without the doctor flag
+    const res = await createPatient(formData);
+    
     if (res.success) {
-      showToast("success", "Registration successful")
-      // Directing to the patient dashboard using the full route path
-      router.push("/(authenticated)/(patient)/dashboard")
+      showToast("success", "Registration successful");
+      
+      // Check if a token was provided from registration; if not, auto login
+      if (!res.data?.token) {
+        // Optionally, if your API does not return a token, you might auto login:
+        const loginRes = await login({ email: formData.email, password: formData.password });
+        if (!loginRes.success) {
+          showToast("error", loginRes.message ?? "Auto login failed, please login manually.");
+          router.push("/login");
+          return;
+        }
+      }
+      
+      // Navigate to the patient dashboard using your route structure.
+      router.push("/(authenticated)/(patient)/dashboard");
     } else {
-      showToast("error", res.message ?? "Registration failed")
+      showToast("error", res.message ?? "Registration failed");
     }
   } catch (error) {
     if (error instanceof Yup.ValidationError) {
-      const validationErrors: FormErrors = {}
+      const validationErrors: FormErrors = {};
       error.inner.forEach((err) => {
         if (err.path) {
-          validationErrors[err.path] = err.message
+          validationErrors[err.path] = err.message;
         }
-      })
-      setErrors(validationErrors)
+      });
+      setErrors(validationErrors);
     } else {
-      showToast("error", "An error occurred. Please try again.")
-      console.error("Registration error:", error)
+      showToast("error", "An error occurred. Please try again.");
+      console.error("Registration error:", error);
     }
   } finally {
-    setIsSubmitting(false)
+    setIsSubmitting(false);
   }
-}
+};
+
 
 
   const handleSelectCountry = (country: typeof COUNTRIES[0]) => {
