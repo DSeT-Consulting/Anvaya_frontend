@@ -242,20 +242,15 @@ export default function RegisterPatient() {
 
   const validateField = async (field: keyof PatientFormData, value: string): Promise<boolean> => {
     try {
-      if (field === "confirmPassword") {
-        // Only check if both password and confirmPassword are non-empty
-        if (formData.password && value && formData.password !== value) {
-          setErrors((prev) => ({ ...prev, confirmPassword: "Passwords must match" }))
-          return false
-        } else {
-          setErrors((prev) => ({ ...prev, confirmPassword: undefined }))
-        }
+      // For confirmPassword, do not validate on every keystroke; rely on onBlur
+      if (field !== "confirmPassword") {
+        const fieldSchema = Yup.object().shape({
+          [field]: PatientSchema.fields[field],
+        })
+        await fieldSchema.validate({ [field]: value }, { abortEarly: false })
+        setErrors((prev) => ({ ...prev, [field]: undefined }))
       }
-      const fieldSchema = Yup.object().shape({
-        [field]: PatientSchema.fields[field],
-      })
-      await fieldSchema.validate({ [field]: value }, { abortEarly: false })
-      setErrors((prev) => ({ ...prev, [field]: undefined }))
+      // For password, if confirmPassword is non-empty, re-validate it on blur
       if (field === "password" && formData.confirmPassword) {
         if (value !== formData.confirmPassword) {
           setErrors((prev) => ({ ...prev, confirmPassword: "Passwords must match" }))
@@ -279,7 +274,10 @@ export default function RegisterPatient() {
 
   const handleInputChange = (field: keyof PatientFormData, value: string): void => {
     setFormData((prev) => ({ ...prev, [field]: value }))
-    validateField(field, value)
+    // For confirmPassword, skip validation on every keystroke; validation will occur on blur.
+    if (field !== "confirmPassword") {
+      validateField(field, value)
+    }
     if (field === "password") {
       checkPasswordRequirements(value)
     }
@@ -300,7 +298,7 @@ export default function RegisterPatient() {
   const handleRegister = async (): Promise<void> => {
     setIsSubmitting(true)
     try {
-      // Remove explicit check for password mismatch; Yup validation will catch it.
+      // Rely on Yup validation for confirmPassword
       await PatientSchema.validate(formData, { abortEarly: false })
       console.log("Registering patient with:", formData)
       const res = await createPatient(formData)
@@ -476,12 +474,7 @@ export default function RegisterPatient() {
                     ]}
                     onPress={() => selectGender(option.value)}
                   >
-                    <Text
-                      style={[
-                        styles.genderText,
-                        formData.gender === option.value && styles.selectedGenderText,
-                      ]}
-                    >
+                    <Text style={[styles.genderText, formData.gender === option.value && styles.selectedGenderText]}>
                       {option.label}
                     </Text>
                   </TouchableOpacity>
@@ -524,11 +517,7 @@ export default function RegisterPatient() {
             <View style={styles.modalContainer}>
               <Text style={styles.modalTitle}>Select Country</Text>
               {COUNTRIES.map((country) => (
-                <Pressable
-                  key={country.callingCode}
-                  style={styles.modalOption}
-                  onPress={() => handleSelectCountry(country)}
-                >
+                <Pressable key={country.callingCode} style={styles.modalOption} onPress={() => handleSelectCountry(country)}>
                   <Text style={styles.modalOptionText}>
                     {country.flag} {country.name} ({country.callingCode})
                   </Text>
