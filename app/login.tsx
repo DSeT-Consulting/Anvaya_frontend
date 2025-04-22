@@ -34,7 +34,7 @@ const translations = {
     mobileEmail: "Mobile or email",
     otpPassword: "OTP or Password",
     loginButton: "Login Securely",
-    register: "New here? Register with Anavaya",
+    register: "New here? Register with Anvaya",
   },
   hi: {
     screenTitle: "अनवाया में आपका स्वागत है",
