@@ -29,7 +29,7 @@ import { showToast } from "@/utils/toast"
 // Translation dictionaries for English, Hindi, and Kannada
 const translations = {
   en: {
-    screenTitle: "Welcome to Anavaya",
+    screenTitle: "Welcome to Anvaya",
     subtitle: "Please login to continue",
     mobileEmail: "Mobile or email",
     otpPassword: "OTP or Password",
