@@ -314,7 +314,7 @@ const handleRegister = async () => {
 
     // Strip formatting from phone number before submission
     const rawPhone = formData.phoneNumber.replace(/\D/g, "")
-    const finalPhone = `${selectedCountry.callingCode} ${rawPhone}`
+    const finalPhone = formData.phoneNumber.replace(/\D/g, "")
 
     const res = await createDoctor({ ...formData, phoneNumber: finalPhone })
 
