@@ -301,40 +301,47 @@ export default function RegisterDoctor() {
     setPasswordChecks({ length, lower, upper, digit })
   }
 
-  const handleRegister = async () => {
-    setIsSubmitting(true)
-    try {
-      if (formData.password !== formData.confirmPassword) {
-        setErrors((prev) => ({ ...prev, confirmPassword: "Passwords must match" }))
-        setIsSubmitting(false)
-        return
-      }
-      await DoctorSchema.validate(formData, { abortEarly: false })
-      const finalPhone = `${selectedCountry.callingCode} ${formData.phoneNumber}`
-      const res = await createDoctor({ ...formData, phoneNumber: finalPhone })
-      if (res.success) {
-        showToast("success", "Registration successful")
-        router.push("/login")
-      } else {
-        showToast("error", res.message ?? "Registration failed")
-      }
-    } catch (error) {
-      if (error instanceof Yup.ValidationError) {
-        const validationErrors: FormErrors = {}
-        error.inner.forEach((err: Yup.ValidationError) => {
-          if (err.path) {
-            validationErrors[err.path] = err.message
-          }
-        })
-        setErrors(validationErrors)
-      } else {
-        showToast("error", "An error occurred. Please try again.")
-        console.error("Registration error:", error)
-      }
-    } finally {
+const handleRegister = async () => {
+  setIsSubmitting(true)
+  try {
+    if (formData.password !== formData.confirmPassword) {
+      setErrors((prev) => ({ ...prev, confirmPassword: "Passwords must match" }))
       setIsSubmitting(false)
+      return
     }
+
+    await DoctorSchema.validate(formData, { abortEarly: false })
+
+    // Strip formatting from phone number before submission
+    const rawPhone = formData.phoneNumber.replace(/\D/g, "")
+    const finalPhone = `${selectedCountry.callingCode} ${rawPhone}`
+
+    const res = await createDoctor({ ...formData, phoneNumber: finalPhone })
+
+    if (res.success) {
+      showToast("success", "Registration successful")
+      router.push("/login")
+    } else {
+      showToast("error", res.message ?? "Registration failed")
+    }
+  } catch (error) {
+    if (error instanceof Yup.ValidationError) {
+      const validationErrors: FormErrors = {}
+      error.inner.forEach((err: Yup.ValidationError) => {
+        if (err.path) {
+          validationErrors[err.path] = err.message
+        }
+      })
+      setErrors(validationErrors)
+    } else {
+      showToast("error", "An error occurred. Please try again.")
+      console.error("Registration error:", error)
+    }
+  } finally {
+    setIsSubmitting(false)
   }
+}
+
 
   const handleSelectCountry = (country: typeof COUNTRIES[0]) => {
     setSelectedCountry(country)
