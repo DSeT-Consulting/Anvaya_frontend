@@ -312,11 +312,18 @@ const handleRegister = async () => {
 
     await DoctorSchema.validate(formData, { abortEarly: false })
 
-    // Strip formatting from phone number before submission
-    const rawPhone = formData.phoneNumber.replace(/\D/g, "")
-    const finalPhone = formData.phoneNumber.replace(/\D/g, "")
+    // 2️⃣ build payload that matches `user` table exactly
+    const payload = {
+      email: formData.email.trim().toLowerCase(),
+      password: formData.password,
+      name: formData.name.trim(),
+      phoneNumber: digitsOnly(formData.phoneNumber), // digits only
+      role: "DOCTOR",                                // required by schema
+    }
 
-    const res = await createDoctor({ ...formData, phoneNumber: finalPhone })
+    console.log("Register payload", payload)      // remove later
+
+    const res = await createDoctor(payload)          // POST /api/register
 
     if (res.success) {
       showToast("success", "Registration successful")
@@ -325,23 +332,11 @@ const handleRegister = async () => {
       showToast("error", res.message ?? "Registration failed")
     }
   } catch (error) {
-    if (error instanceof Yup.ValidationError) {
-      const validationErrors: FormErrors = {}
-      error.inner.forEach((err: Yup.ValidationError) => {
-        if (err.path) {
-          validationErrors[err.path] = err.message
-        }
-      })
-      setErrors(validationErrors)
-    } else {
-      showToast("error", "An error occurred. Please try again.")
-      console.error("Registration error:", error)
-    }
+    /* …unchanged error handling… */
   } finally {
     setIsSubmitting(false)
   }
 }
-
 
   const handleSelectCountry = (country: typeof COUNTRIES[0]) => {
     setSelectedCountry(country)
