@@ -229,13 +229,12 @@ export default function RegisterDoctor() {
   const validateForm = async () => {
     try {
       await DoctorSchema.validate(formData, { abortEarly: false })
-      const hasErrors = Object.values(errors).some((err) => err !== undefined)
-      const allFieldsFilled = Object.values(formData).every((val) => val.trim() !== "")
-      setIsFormValid(!hasErrors && allFieldsFilled)
+      setIsFormValid(true)
     } catch {
       setIsFormValid(false)
     }
   }
+
 
   const validateField = async (
   field: keyof DoctorFormData,
