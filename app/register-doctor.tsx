@@ -237,37 +237,46 @@ export default function RegisterDoctor() {
     }
   }
 
-  const validateField = async (field: keyof DoctorFormData, value: string) => {
-    try {
-      if (field === "confirmPassword") {
-        if (value !== formData.password) {
-          setErrors((prev) => ({ ...prev, confirmPassword: "Passwords must match" }))
-          return
-        } else {
-          setErrors((prev) => ({ ...prev, confirmPassword: undefined }))
-        }
+  const validateField = async (
+  field: keyof DoctorFormData,
+  value: string,
+  customFormData?: DoctorFormData
+) => {
+  const currentForm = customFormData || formData
+
+  try {
+    if (field === "confirmPassword") {
+      if (value !== currentForm.password) {
+        setErrors((prev) => ({ ...prev, confirmPassword: "Passwords must match" }))
+        return
+      } else {
+        setErrors((prev) => ({ ...prev, confirmPassword: undefined }))
       }
-      const fieldSchema = Yup.object().shape({ [field]: DoctorSchema.fields[field] })
-      await fieldSchema.validate({ [field]: value }, { abortEarly: false })
-      setErrors((prev) => ({ ...prev, [field]: undefined }))
-      if (field === "password" && formData.confirmPassword) {
-        if (value !== formData.confirmPassword) {
-          setErrors((prev) => ({ ...prev, confirmPassword: "Passwords must match" }))
-        } else {
-          setErrors((prev) => ({ ...prev, confirmPassword: undefined }))
-        }
-      }
-      validateForm()
-    } catch (err) {
-      if (err instanceof Yup.ValidationError) {
-        const fieldError = err.inner.find((e) => e.path === field)
-        if (fieldError) {
-          setErrors((prev) => ({ ...prev, [field]: fieldError.message }))
-        }
-      }
-      validateForm()
     }
+
+    const fieldSchema = Yup.object().shape({ [field]: DoctorSchema.fields[field] })
+    await fieldSchema.validate({ [field]: value }, { abortEarly: false })
+    setErrors((prev) => ({ ...prev, [field]: undefined }))
+
+    if (field === "password" && currentForm.confirmPassword) {
+      if (value !== currentForm.confirmPassword) {
+        setErrors((prev) => ({ ...prev, confirmPassword: "Passwords must match" }))
+      } else {
+        setErrors((prev) => ({ ...prev, confirmPassword: undefined }))
+      }
+    }
+
+    validateForm()
+  } catch (err) {
+    if (err instanceof Yup.ValidationError) {
+      const fieldError = err.inner.find((e) => e.path === field)
+      if (fieldError) {
+        setErrors((prev) => ({ ...prev, [field]: fieldError.message }))
+      }
+    }
+    validateForm()
   }
+}
 
   const handleInputChange = (field: keyof DoctorFormData, rawValue: string) => {
     let value = rawValue
